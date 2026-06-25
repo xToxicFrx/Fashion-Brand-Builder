@@ -120,13 +120,29 @@ can migrate them to `Json`/`Jsonb` columns later if you want.
 
 ## Deploying to Vercel
 
-1. Provision a Postgres DB (Supabase) and set `DATABASE_URL` + `DIRECT_URL` (the
-   Prisma datasource is already PostgreSQL).
-2. Add all environment variables from `.env.example` in the Vercel project
-   settings.
-3. Deploy. The `build` script runs `prisma generate` automatically.
+1. Provision a Postgres DB (Supabase). In Supabase open **Connect → ORMs / Prisma**
+   and copy the two connection strings:
+   - `DATABASE_URL` → **Transaction pooler** (host `...pooler.supabase.com`, port
+     `6543`, append `?pgbouncer=true`). Used by the app at runtime.
+   - `DIRECT_URL` → **Session pooler** (host `...pooler.supabase.com`, port `5432`).
+     Used to run migrations during the build. Use the *pooler* host (not the raw
+     `db.<ref>.supabase.co` direct host) — the pooler is IPv4-compatible, which
+     Vercel requires.
+2. In **Vercel → Project → Settings → Environment Variables** add at least:
+   - `DATABASE_URL` and `DIRECT_URL` (both required — the build runs migrations).
+   - `NEXTAUTH_URL` = your deployed URL, e.g. `https://your-app.vercel.app`.
+   - `NEXTAUTH_SECRET` = a real random secret (`openssl rand -base64 32`).
+   - Plus any optional integrations from `.env.example` you want to enable.
+3. Deploy. The `build` script runs `prisma generate && prisma migrate deploy`
+   automatically, so the database tables are **created on every deploy** — no
+   manual migration step needed. (Optional: run `npm run seed` once against your
+   production DB for demo data.)
 4. Configure the Stripe webhook endpoint to `https://<your-app>/api/stripe/webhook`
    and set `STRIPE_WEBHOOK_SECRET`.
+
+> **If sign-up fails with a 500 error**, the database tables are almost certainly
+> missing. Confirm `DATABASE_URL` **and** `DIRECT_URL` are set in Vercel, then
+> redeploy — the build will create the tables.
 
 **Image uploads:** dev writes to `/public/uploads`. On serverless hosting this
 isn't persistent — set the `UPLOADTHING_*` keys and swap `app/api/upload/route.ts`

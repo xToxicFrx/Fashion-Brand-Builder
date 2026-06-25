@@ -5,7 +5,7 @@
   "description": "All-in-one platform for independent fashion designers: Design Studio, Store, and Trend Intelligence.",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx prisma/seed.ts",
