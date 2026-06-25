@@ -1,19 +1,19 @@
 // Fashion Brand Builder — Prisma schema
-// Dev: SQLite (file-based, instant). Production: switch `provider` to
-// "postgresql" and point DATABASE_URL at Supabase/Postgres (see README).
-// Enum-like fields are modeled as String + validated with Zod (lib/validations.ts)
-// so the schema stays portable across SQLite and Postgres.
-// JSON-shaped fields are stored as String (JSON-encoded TEXT) because the SQLite
-// connector does not support Prisma's Json type. Use lib/json.ts helpers to
-// (de)serialize. On Postgres these can be migrated to Json/Jsonb.
+// Database: PostgreSQL (Supabase in production). `url` is the pooled connection
+// (PgBouncer, port 6543) used by the app; `directUrl` is the direct connection
+// (port 5432) used for migrations. See README ("Deploying to Vercel").
+// Enum-like fields are modeled as String + validated with Zod (lib/validations.ts).
+// JSON-shaped fields are stored as String (JSON-encoded) via lib/json.ts; on
+// PostgreSQL they can optionally be migrated to Json/Jsonb later.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ----------------------------------------------------------------------------
