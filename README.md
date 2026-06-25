@@ -26,7 +26,7 @@ settings, public storefront) working with real data.
 ## Tech stack
 
 Next.js 14 (App Router) · TypeScript · Tailwind CSS + shadcn/ui · Prisma ·
-SQLite (dev) / PostgreSQL (prod) · NextAuth · Zustand · Konva/react-konva ·
+PostgreSQL (Supabase) · NextAuth · Zustand · Konva/react-konva ·
 Recharts · React Hook Form + Zod · Stripe · Anthropic Claude · Resend.
 
 ---
@@ -37,12 +37,13 @@ Recharts · React Hook Form + Zod · Stripe · Anthropic Claude · Resend.
 # 1. Install dependencies
 npm install
 
-# 2. Environment — the defaults run the app with SQLite + email/password auth.
+# 2. Environment
 cp .env.example .env
-#    Generate a real secret:  openssl rand -base64 32  -> NEXTAUTH_SECRET
+#    - Set DATABASE_URL + DIRECT_URL from your Supabase project (see "Database" below)
+#    - Generate a secret:  openssl rand -base64 32  -> NEXTAUTH_SECRET
 
-# 3. Database — create the SQLite DB, apply the schema, and seed demo data
-npx prisma migrate dev --name init
+# 3. Database — apply the schema and seed demo data
+npx prisma migrate deploy
 npm run seed
 
 # 4. Run
@@ -98,32 +99,29 @@ store/                                 # Zustand (canvas state + history)
 
 ---
 
-## Database: SQLite (dev) → PostgreSQL/Supabase (prod)
+## Database (PostgreSQL / Supabase)
 
-Local development uses SQLite for an instant, zero-setup database. For
-production (and Vercel — serverless filesystems don't persist SQLite), switch to
-Postgres:
+The app uses PostgreSQL. Create a free [Supabase](https://supabase.com) project,
+then:
 
-1. In `prisma/schema.prisma`, change the datasource:
-   ```prisma
-   datasource db {
-     provider = "postgresql"   // was "sqlite"
-     url      = env("DATABASE_URL")
-   }
-   ```
-2. Set `DATABASE_URL` to your Supabase/Postgres connection string.
-3. `npx prisma migrate deploy` (or `migrate dev` for a fresh history), then
-   `npm run seed` if you want demo data.
+1. **Project Settings → Database → Connection string.** Put the **pooled** URL
+   (port `6543`, append `?pgbouncer=true`) in `DATABASE_URL`, and the **direct**
+   URL (port `5432`) in `DIRECT_URL`. Prisma uses the pooled URL at runtime and
+   the direct URL for migrations.
+2. **Apply the schema:** `npx prisma migrate deploy` (applies the committed
+   migration). Then `npm run seed` for demo data.
+3. **Evolve the schema** during development by editing `prisma/schema.prisma` and
+   running `npx prisma migrate dev --name <change>`.
 
-JSON-shaped fields are stored as `String` (JSON-encoded) for SQLite portability
-via `lib/json.ts`; on Postgres you can migrate them to `Json` columns later.
+JSON-shaped fields are stored as `String` (JSON-encoded) via `lib/json.ts`; you
+can migrate them to `Json`/`Jsonb` columns later if you want.
 
 ---
 
 ## Deploying to Vercel
 
-1. Switch the Prisma datasource to `postgresql` (above) and provision a Postgres
-   DB (Supabase works well).
+1. Provision a Postgres DB (Supabase) and set `DATABASE_URL` + `DIRECT_URL` (the
+   Prisma datasource is already PostgreSQL).
 2. Add all environment variables from `.env.example` in the Vercel project
    settings.
 3. Deploy. The `build` script runs `prisma generate` automatically.
