@@ -1,0 +1,198 @@
+// Fashion Brand Builder — Prisma schema
+// Dev: SQLite (file-based, instant). Production: switch `provider` to
+// "postgresql" and point DATABASE_URL at Supabase/Postgres (see README).
+// Enum-like fields are modeled as String + validated with Zod (lib/validations.ts)
+// so the schema stays portable across SQLite and Postgres.
+// JSON-shaped fields are stored as String (JSON-encoded TEXT) because the SQLite
+// connector does not support Prisma's Json type. Use lib/json.ts helpers to
+// (de)serialize. On Postgres these can be migrated to Json/Jsonb.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// NextAuth adapter models
+// ----------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ----------------------------------------------------------------------------
+// Domain models
+// ----------------------------------------------------------------------------
+
+model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String    @unique
+  emailVerified    DateTime?
+  image            String?
+  hashedPassword   String?
+  role             String    @default("designer") // designer | brand | customer | admin
+  subscriptionTier String    @default("free") // free | starter | pro
+  stripeCustomerId String?
+  bio              String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  designs        Design[]
+  stores         Store[]
+  reviews        Review[]
+  collaborations Collaboration[]
+}
+
+model Design {
+  id               String   @id @default(cuid())
+  userId           String
+  name             String
+  description      String?
+  category         String   @default("tshirt") // tshirt | hoodie | jacket | ...
+  designData       String // JSON-encoded Konva/Fabric canvas state
+  mockupImageUrl   String?
+  thumbnailUrl     String?
+  price            Float    @default(29.99)
+  trendScore       Int? // 0-100 (AI generated)
+  demandPrediction Int? // estimated units 0-1000
+  status           String   @default("draft") // draft | published | archived
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products       Product[]
+  reviews        Review[]
+  collaborations Collaboration[]
+  trends         Trend[]         @relation("DesignTrends")
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  designId      String
+  storeId       String
+  sku           String   @unique
+  sizes         String // JSON-encoded ["XS","S","M","L","XL","XXL"]
+  prices        String // JSON-encoded { "M": 29.99, ... }
+  inventory     String // JSON-encoded { "M": 100, ... }
+  printProvider String? // printful | teespring | ...
+  externalId    String?
+  isPublished   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  design Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+  store  Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Store {
+  id               String   @id @default(cuid())
+  userId           String
+  name             String
+  slug             String   @unique
+  description      String?
+  logoUrl          String?
+  brandColors      String? // JSON-encoded { primary, secondary, accent }
+  customDomain     String?
+  subscriptionTier String   @default("free")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products Product[]
+  orders   Order[]
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  storeId         String
+  customerEmail   String
+  items           String // JSON-encoded [{ productId, quantity, price, size }]
+  totalAmount     Float
+  status          String   @default("pending") // pending | processing | shipped | delivered
+  stripePaymentId String?
+  shippingAddress String? // JSON-encoded shipping address
+  trackingNumber  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Trend {
+  id               String    @id @default(cuid())
+  keyword          String
+  category         String?
+  trendScore       Int       @default(0) // 0-100
+  googleTrendsData String? // JSON-encoded Google Trends payload
+  tiktokEngagement Int?
+  redditSentiment  Float?
+  predictionStatus String    @default("trending_up") // trending_up | peak | declining
+  generatedAt      DateTime  @default(now())
+  expiresAt        DateTime?
+
+  designs Design[] @relation("DesignTrends")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  designId  String
+  userId    String
+  rating    Int // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  design Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Collaboration {
+  id              String   @id @default(cuid())
+  designId        String
+  collaboratorId  String
+  role            String   @default("contributor") // co-designer | contributor
+  splitPercentage Float    @default(0)
+  status          String   @default("pending") // pending | accepted | declined
+  createdAt       DateTime @default(now())
+
+  design       Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+  collaborator User   @relation(fields: [collaboratorId], references: [id], onDelete: Cascade)
+}
