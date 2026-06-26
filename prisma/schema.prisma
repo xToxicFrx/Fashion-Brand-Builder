@@ -1,7 +1,7 @@
 // Fashion Brand Builder — Prisma schema
-// Database: PostgreSQL (Supabase in production). `url` is the pooled connection
-// (PgBouncer, port 6543) used by the app; `directUrl` is the direct connection
-// (port 5432) used for migrations. See README ("Deploying to Vercel").
+// Database: PostgreSQL (Supabase in production). A single `DATABASE_URL` is used
+// for both the app and migrations — point it at the Supabase Session pooler
+// (host ...pooler.supabase.com, port 5432, no pgbouncer flag). See README.
 // Enum-like fields are modeled as String + validated with Zod (lib/validations.ts).
 // JSON-shaped fields are stored as String (JSON-encoded) via lib/json.ts; on
 // PostgreSQL they can optionally be migrated to Json/Jsonb later.
@@ -11,9 +11,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ----------------------------------------------------------------------------
