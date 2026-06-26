@@ -121,27 +121,31 @@ can migrate them to `Json`/`Jsonb` columns later if you want.
 ## Deploying to Vercel
 
 1. Provision a Postgres DB (Supabase). In Supabase open **Connect → ORMs / Prisma**
-   and copy the **Session pooler** connection string (host `...pooler.supabase.com`,
-   port `5432`, no `?pgbouncer` flag). Use the *pooler* host (not the raw
-   `db.<ref>.supabase.co` direct host) — the pooler is IPv4-compatible, which Vercel
-   requires. Replace `[YOUR-PASSWORD]` with your DB password (letters and numbers
-   only avoids URL-encoding issues).
+   and copy **both** connection strings (use the *pooler* host, not the raw
+   `db.<ref>.supabase.co` host — the pooler is IPv4-compatible, which Vercel
+   requires). Replace `[YOUR-PASSWORD]` with your DB password (letters and numbers
+   only avoids URL-encoding issues):
+   - `DATABASE_URL` → **Transaction pooler** (port `6543`, append `?pgbouncer=true`).
+     Used by the app at runtime.
+   - `DIRECT_URL` → **Session pooler** (port `5432`). Used by `prisma db push` at
+     build time — schema changes need a real session, which the pgbouncer pooler
+     can't provide.
 2. In **Vercel → Project → Settings → Environment Variables** add at least:
-   - `DATABASE_URL` = the Session pooler string above (one URL, used for both the
-     app and the schema sync at build time).
+   - `DATABASE_URL` and `DIRECT_URL` (both required).
    - `NEXTAUTH_URL` = your deployed URL, e.g. `https://your-app.vercel.app`.
    - `NEXTAUTH_SECRET` = a real random secret (`openssl rand -base64 32`).
    - Plus any optional integrations from `.env.example` you want to enable.
-3. Deploy. The `build` script runs `prisma generate && prisma db push` automatically,
-   so the database schema is **synced on every deploy** — no manual migration step
-   needed. (Optional: run `npm run seed` once against your production DB for demo
-   data.)
+3. Deploy. The `build` script runs `prisma generate && prisma db push` automatically
+   (via `DIRECT_URL`), so the database schema is **synced on every deploy** — no
+   manual migration step needed. (Optional: run `npm run seed` once against your
+   production DB for demo data.)
 4. Configure the Stripe webhook endpoint to `https://<your-app>/api/stripe/webhook`
    and set `STRIPE_WEBHOOK_SECRET`.
 
 > **If sign-up fails with a 500 error**, check the deployment's build logs. A
-> `P1000` auth error means a wrong DB password in `DATABASE_URL`; once the build is
-> green, also confirm `NEXTAUTH_SECRET` and `NEXTAUTH_URL` are set.
+> `P1000` auth error means a wrong DB password; a build that hangs on `db push`
+> usually means `DIRECT_URL` is missing (it must be the port-`5432` session pooler).
+> Once the build is green, also confirm `NEXTAUTH_SECRET` and `NEXTAUTH_URL` are set.
 
 **Image uploads:** dev writes to `/public/uploads`. On serverless hosting this
 isn't persistent — set the `UPLOADTHING_*` keys and swap `app/api/upload/route.ts`
