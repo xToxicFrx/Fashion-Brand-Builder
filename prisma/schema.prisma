@@ -197,3 +197,13 @@ model Collaboration {
   design       Design @relation(fields: [designId], references: [id], onDelete: Cascade)
   collaborator User   @relation(fields: [collaboratorId], references: [id], onDelete: Cascade)
 }
+
+// Landing-page waitlist: capture interest in the AI trend tool to gauge demand
+// before building further. Standalone (no auth, no relations).
+model WaitlistSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  sellsOn   String? // etsy | tiktok | instagram | own_store | nothing_yet
+  source    String? // optional traffic-source tag (utm/referrer)
+  createdAt DateTime @default(now())
+}

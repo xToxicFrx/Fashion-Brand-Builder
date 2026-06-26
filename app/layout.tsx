@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
+import { Analytics } from '@vercel/analytics/react';
 
 import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'Fashion Brand Builder',
+  title: 'Know what to design next — Fashion Brand Builder',
   description:
-    'All-in-one platform for independent fashion designers — Design Studio, Store, and Trend Intelligence.',
+    'AI trend intelligence for independent fashion designers: see which designs and products are about to trend, before you make them.',
 };
 
 export default function RootLayout({
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );

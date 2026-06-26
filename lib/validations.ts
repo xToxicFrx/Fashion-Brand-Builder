@@ -48,6 +48,21 @@ export const signupSchema = z.object({
   role: z.enum(USER_ROLES).default('designer'),
 });
 
+// --- Waitlist (landing-page demand test) ------------------------------------
+export const WAITLIST_SELLS_ON = [
+  'etsy',
+  'tiktok',
+  'instagram',
+  'own_store',
+  'nothing_yet',
+] as const;
+
+export const waitlistSchema = z.object({
+  email: z.string().email(),
+  sellsOn: z.enum(WAITLIST_SELLS_ON).optional(),
+  source: z.string().max(120).optional(),
+});
+
 // --- Canvas (Design.designData) --------------------------------------------
 export const canvasElementSchema = z.object({
   id: z.string(),
