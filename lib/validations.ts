@@ -63,6 +63,15 @@ export const waitlistSchema = z.object({
   source: z.string().max(120).optional(),
 });
 
+// --- Trend teaser (public landing-page demo) --------------------------------
+export const teaserSchema = z.object({
+  keyword: z
+    .string()
+    .trim()
+    .min(2, 'Enter a niche or keyword')
+    .max(60, 'Keep it under 60 characters'),
+});
+
 // --- Canvas (Design.designData) --------------------------------------------
 export const canvasElementSchema = z.object({
   id: z.string(),
