@@ -49,6 +49,29 @@ export async function POST(request: Request) {
       console.error('[api/trends/report] snapshot failed', e);
     }
 
+    // Auto-save the full report per user so it's instantly re-openable later.
+    try {
+      await prisma.savedReport.upsert({
+        where: { userId_keyword: { userId: user.id, keyword: report.keyword } },
+        update: {
+          trendScore: report.trendScore,
+          momentum: report.momentum,
+          dataSource: report.dataSource,
+          reportJson: stringifyJson(report),
+        },
+        create: {
+          userId: user.id,
+          keyword: report.keyword,
+          trendScore: report.trendScore,
+          momentum: report.momentum,
+          dataSource: report.dataSource,
+          reportJson: stringifyJson(report),
+        },
+      });
+    } catch (e) {
+      console.error('[api/trends/report] saveReport failed', e);
+    }
+
     return NextResponse.json({ report });
   } catch (error) {
     console.error('[api/trends/report]', error);

@@ -85,6 +85,7 @@ model User {
   // Trend Radar (FashionTrend AI)
   trackedNiches TrackedNiche[]
   savedIdeas    SavedIdea[]
+  savedReports  SavedReport[]
   collections   Collection[]
   notifications Notification[]
   onboarding    OnboardingProfile?
@@ -314,4 +315,22 @@ model OnboardingProfile {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Full trend report saved per user for instant re-open (no AI cost). One per
+// user+keyword (latest wins).
+model SavedReport {
+  id         String   @id @default(cuid())
+  userId     String
+  keyword    String
+  trendScore Int
+  momentum   String
+  dataSource String
+  reportJson String // full TrendReport JSON
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, keyword])
 }
