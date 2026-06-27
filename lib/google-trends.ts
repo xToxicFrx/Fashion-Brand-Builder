@@ -92,3 +92,68 @@ export async function fetchInterestOverTime(
     );
   }
 }
+
+/**
+ * Fetch rising/top related search queries for a keyword. Best-effort: returns an
+ * empty array on failure so a caller can still build a report.
+ */
+export async function fetchRelatedQueries(
+  keyword: string,
+  geo = '',
+): Promise<string[]> {
+  try {
+    const raw = await googleTrends.relatedQueries({
+      keyword,
+      geo: geo || undefined,
+    });
+    const data = JSON.parse(raw);
+    const lists: Array<{ rankedKeyword?: Array<{ query?: string }> }> =
+      data?.default?.rankedList ?? [];
+    const queries: string[] = [];
+    for (const list of lists) {
+      for (const item of list?.rankedKeyword ?? []) {
+        if (item?.query) queries.push(String(item.query));
+      }
+    }
+    return Array.from(new Set(queries)).slice(0, 8);
+  } catch (error) {
+    console.error('[google-trends] relatedQueries failed:', error);
+    return [];
+  }
+}
+
+export interface RegionInterest {
+  region: string;
+  value: number;
+}
+
+/**
+ * Fetch interest-by-region (top countries) for a keyword. Best-effort: returns an
+ * empty array on failure.
+ */
+export async function fetchInterestByRegion(
+  keyword: string,
+  geo = '',
+): Promise<RegionInterest[]> {
+  try {
+    const raw = await googleTrends.interestByRegion({
+      keyword,
+      geo: geo || undefined,
+      resolution: 'COUNTRY',
+    });
+    const data = JSON.parse(raw);
+    const regions: Array<{ geoName?: string; value?: number[] }> =
+      data?.default?.geoMapData ?? [];
+    return regions
+      .map((r) => ({
+        region: r.geoName ?? '',
+        value: Array.isArray(r.value) ? r.value[0] ?? 0 : 0,
+      }))
+      .filter((r) => r.region && r.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  } catch (error) {
+    console.error('[google-trends] interestByRegion failed:', error);
+    return [];
+  }
+}
