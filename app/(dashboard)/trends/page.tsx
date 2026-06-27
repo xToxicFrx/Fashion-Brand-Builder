@@ -1,9 +1,6 @@
-import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import {
-  TrendsExplorer,
-  type SerializedTrend,
-} from '@/components/Trends/TrendsExplorer';
+import { prisma } from '@/lib/db';
+import { TrendRadar } from '@/components/Trends/TrendRadar';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,30 +8,41 @@ export default async function TrendsPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const trends = await prisma.trend.findMany({
-    orderBy: { generatedAt: 'desc' },
-    take: 50,
+  const niches = await prisma.trackedNiche.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: 'desc' },
+    take: 24,
   });
-
-  const serialized: SerializedTrend[] = trends.map((t) => ({
-    id: t.id,
-    keyword: t.keyword,
-    category: t.category,
-    trendScore: t.trendScore,
-    predictionStatus: t.predictionStatus,
-    googleTrendsData: t.googleTrendsData,
-    generatedAt: t.generatedAt.toISOString(),
-  }));
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Trend Intelligence</h1>
+        <h1 className="text-2xl font-bold">Trend Radar</h1>
         <p className="text-muted-foreground">
-          Search keywords for live Google Trends data, then analyze them with AI.
+          Search any fashion niche for a live, data-grounded trend report — then
+          turn the winners into a design.
         </p>
       </div>
-      <TrendsExplorer initialTrends={serialized} />
+
+      <TrendRadar />
+
+      {niches.length > 0 && (
+        <div>
+          <h2 className="mb-2 text-sm font-medium text-muted-foreground">
+            Your tracked niches
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {niches.map((n) => (
+              <span
+                key={n.id}
+                className="rounded-full border px-3 py-1 text-sm"
+              >
+                {n.keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
