@@ -54,6 +54,7 @@ export default async function LibraryPage() {
     title: i.title,
     description: i.description,
     suggestedPrice: i.suggestedPrice,
+    imageUrl: i.imageUrl,
   }));
 
   return (

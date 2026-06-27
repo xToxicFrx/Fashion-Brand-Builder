@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { getCurrentUser } from '@/lib/auth';
 import { generateConceptImage, isOpenAIConfigured } from '@/lib/openai';
+import { persistImageFromUrl } from '@/lib/storage';
 
 const schema = z.object({ prompt: z.string().trim().min(3).max(1000) });
 
@@ -27,7 +28,11 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const url = await generateConceptImage(parsed.data.prompt);
+    // generateConceptImage returns a temporary dall-e-3 URL (expires after
+    // ~1-2h). Copy it into Supabase Storage so saved mockups stay valid; if
+    // Storage isn't configured this returns the original URL unchanged.
+    const rawUrl = await generateConceptImage(parsed.data.prompt);
+    const url = await persistImageFromUrl(rawUrl, user.id);
     return NextResponse.json({ url });
   } catch (error) {
     console.error('[api/design/image]', error);

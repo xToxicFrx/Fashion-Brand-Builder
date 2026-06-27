@@ -25,6 +25,7 @@ const saveSchema = z.object({
   description: z.string().max(400).optional(),
   suggestedPrice: z.number().optional(),
   brief: z.unknown().optional(),
+  imageUrl: z.string().url().max(2000).optional(),
 });
 
 /** Save a design idea (optionally with a generated brief). */
@@ -43,7 +44,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { keyword, title, description, suggestedPrice, brief } = parsed.data;
+    const { keyword, title, description, suggestedPrice, brief, imageUrl } =
+      parsed.data;
     const idea = await prisma.savedIdea.create({
       data: {
         userId: user.id,
@@ -53,6 +55,7 @@ export async function POST(request: Request) {
         suggestedPrice: suggestedPrice ?? null,
         status: brief ? 'brief' : 'idea',
         briefJson: brief ? stringifyJson(brief) : null,
+        imageUrl: imageUrl ?? null,
       },
     });
     return NextResponse.json({ idea });

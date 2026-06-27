@@ -22,6 +22,7 @@ interface SavedIdeaItem {
   title: string;
   description: string | null;
   suggestedPrice: number | null;
+  imageUrl: string | null;
 }
 
 const MOMENTUM_LABEL: Record<string, string> = {
@@ -111,6 +112,15 @@ export function LibraryView({
                   <p className="text-xs text-muted-foreground">{i.keyword}</p>
                 </CardHeader>
                 <CardContent className="mt-auto space-y-2">
+                  {i.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={i.imageUrl}
+                      alt={`${i.title} mockup`}
+                      className="aspect-square w-full rounded-md border object-cover"
+                      loading="lazy"
+                    />
+                  )}
                   {i.description && (
                     <p className="line-clamp-2 text-sm text-muted-foreground">
                       {i.description}
