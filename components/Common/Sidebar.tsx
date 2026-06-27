@@ -11,6 +11,8 @@ import {
   ShoppingBag,
   Settings,
   Sparkles,
+  Layers,
+  Calculator,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -18,8 +20,10 @@ import { cn } from '@/lib/utils';
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/trends', label: 'Trend Radar', icon: TrendingUp },
+  { href: '/collections', label: 'Collections', icon: Layers },
   { href: '/studio', label: 'Design Studio', icon: Palette },
   { href: '/designs', label: 'My Designs', icon: Images },
+  { href: '/pricing', label: 'Pricing', icon: Calculator },
   { href: '/store', label: 'Store', icon: Store },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/settings', label: 'Settings', icon: Settings },
