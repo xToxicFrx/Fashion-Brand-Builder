@@ -14,6 +14,7 @@ import {
   Layers,
   Calculator,
   Megaphone,
+  Library,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ import { cn } from '@/lib/utils';
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/trends', label: 'Trend Radar', icon: TrendingUp },
+  { href: '/library', label: 'Library', icon: Library },
   { href: '/collections', label: 'Collections', icon: Layers },
   { href: '/studio', label: 'Design Studio', icon: Palette },
   { href: '/designs', label: 'My Designs', icon: Images },
