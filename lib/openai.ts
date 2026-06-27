@@ -112,3 +112,114 @@ export async function analyzeTrendKeyword(
     throw error instanceof Error ? error : new Error('OpenAI request failed.');
   }
 }
+
+export interface DesignIdea {
+  title: string;
+  description: string;
+  suggestedPrice: number;
+  keyElements: string[];
+}
+
+export interface TrendInsights {
+  trendScore: number; // AI estimate (used only when no real data is available)
+  demandLabel: 'low' | 'medium' | 'high';
+  suggestedPrice: number;
+  audience: string;
+  rationale: string;
+  related: string[];
+  designIdeas: DesignIdea[];
+}
+
+/**
+ * Interpret a fashion niche with OpenAI. When real Google Trends numbers are
+ * provided (hasRealData), they are passed as ground truth so the rationale and
+ * ideas are grounded in measured data rather than invented.
+ */
+export async function generateTrendInsights(params: {
+  keyword: string;
+  trendScore?: number;
+  momentum?: string;
+  risingQueries?: string[];
+  hasRealData: boolean;
+  includeIdeas?: boolean;
+}): Promise<TrendInsights> {
+  const client = getOpenAI();
+  const { keyword, trendScore, momentum, risingQueries, hasRealData, includeIdeas } =
+    params;
+
+  const ideasInstruction = includeIdeas
+    ? '"designIdeas": array of exactly 3 objects {"title": string, "description": string (max 160 chars), "suggestedPrice": number (USD), "keyElements": string[] (2-4 items)}'
+    : '"designIdeas": []';
+
+  const system =
+    'You are a fashion trend analyst for an independent-designer platform. ' +
+    'Respond with a single strict JSON object only — no prose, no markdown. ' +
+    'Schema: {"trendScore": number (0-100), "demandLabel": "low"|"medium"|"high", ' +
+    '"suggestedPrice": number (USD retail), "audience": string (max 120 chars), ' +
+    '"rationale": string (max 240 chars), "related": string[] (3-6 related keywords), ' +
+    ideasInstruction +
+    '}.';
+
+  const dataContext = hasRealData
+    ? `Use this REAL Google Trends data as ground truth: current interest score ${trendScore}/100, momentum "${momentum}"${
+        risingQueries && risingQueries.length
+          ? `, rising related searches: ${risingQueries.slice(0, 8).join(', ')}`
+          : ''
+      }. Base your rationale on these real numbers.`
+    : 'No live data is available; estimate from your own knowledge and keep numbers plausible.';
+
+  const userPrompt = `Analyze the fashion niche/keyword "${keyword}" for an independent apparel designer. ${dataContext} Provide demand level, a recommended USD retail price, the core audience, a brief rationale, related keywords${
+    includeIdeas
+      ? ', and 3 concrete, specific product/design ideas with prices and key visual elements'
+      : ''
+  }. Respond with JSON only.`;
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: MODEL,
+      max_tokens: includeIdeas ? 1200 : 600,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: userPrompt },
+      ],
+    });
+
+    const text = completion.choices[0]?.message?.content ?? '';
+    const parsed = extractJson<Partial<TrendInsights>>(text);
+    const demand = parsed.demandLabel;
+
+    return {
+      trendScore: clamp(Math.round(Number(parsed.trendScore)), 0, 100),
+      demandLabel: demand === 'low' || demand === 'high' ? demand : 'medium',
+      suggestedPrice: clamp(Number(parsed.suggestedPrice), 1, 100000),
+      audience:
+        typeof parsed.audience === 'string'
+          ? parsed.audience.slice(0, 160)
+          : 'Independent fashion shoppers',
+      rationale:
+        typeof parsed.rationale === 'string'
+          ? parsed.rationale.slice(0, 300)
+          : 'No rationale provided.',
+      related: Array.isArray(parsed.related)
+        ? parsed.related.slice(0, 6).map(String)
+        : [],
+      designIdeas: Array.isArray(parsed.designIdeas)
+        ? parsed.designIdeas.slice(0, 3).map((i) => {
+            const idea = (i ?? {}) as Partial<DesignIdea>;
+            return {
+              title: String(idea.title ?? 'Untitled idea'),
+              description: String(idea.description ?? ''),
+              suggestedPrice: clamp(Number(idea.suggestedPrice), 1, 100000),
+              keyElements: Array.isArray(idea.keyElements)
+                ? idea.keyElements.slice(0, 4).map(String)
+                : [],
+            };
+          })
+        : [],
+    };
+  } catch (error) {
+    console.error('[openai] generateTrendInsights failed:', error);
+    throw error instanceof Error ? error : new Error('OpenAI request failed.');
+  }
+}

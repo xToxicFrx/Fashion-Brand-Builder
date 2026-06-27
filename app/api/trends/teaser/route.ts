@@ -1,25 +1,17 @@
 import { NextResponse } from 'next/server';
 
 import { teaserSchema } from '@/lib/validations';
-import {
-  analyzeTrendKeyword,
-  isOpenAIConfigured,
-  type TrendAnalysis,
-} from '@/lib/openai';
+import { getTrendReport } from '@/lib/trend-intelligence';
 
 /**
  * Public trend teaser for the landing page. NOT authenticated, so it has basic,
- * best-effort cost/abuse protection: a per-IP rate limit and a per-keyword cache
- * (both in-memory — scoped to a single serverless instance; use a shared store
- * like Upstash for hard, global limits). Returns 503 when AI isn't configured so
- * the frontend can fall back to a static example instead of erroring.
+ * best-effort cost/abuse protection (per-IP rate limit). The heavy lifting +
+ * caching + graceful degradation live in getTrendReport().
  */
-const RATE_LIMIT = 5; // requests
+const RATE_LIMIT = 6; // requests
 const RATE_WINDOW_MS = 60_000; // per minute, per IP
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 const hits = new Map<string, number[]>();
-const cache = new Map<string, { at: number; data: TrendAnalysis }>();
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -40,13 +32,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isOpenAIConfigured()) {
-      return NextResponse.json(
-        { error: 'AI is not configured yet.' },
-        { status: 503 },
-      );
-    }
-
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       'unknown';
@@ -57,16 +42,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const keyword = parsed.data.keyword;
-    const cacheKey = keyword.toLowerCase();
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-      return NextResponse.json({ analysis: cached.data, cached: true });
-    }
+    const report = await getTrendReport(parsed.data.keyword, {
+      includeIdeas: false,
+    });
 
-    const analysis = await analyzeTrendKeyword(keyword);
-    cache.set(cacheKey, { at: Date.now(), data: analysis });
-    return NextResponse.json({ analysis });
+    // Shape kept backwards-compatible with the teaser component.
+    return NextResponse.json({
+      analysis: {
+        keyword: report.keyword,
+        trendScore: report.trendScore,
+        predictionStatus: report.momentum,
+        demandLabel: report.demandLabel,
+        suggestedPrice: report.suggestedPrice,
+        related: report.risingQueries,
+        rationale: report.rationale,
+        dataSource: report.dataSource,
+        timeline: report.timeline,
+      },
+    });
   } catch (error) {
     console.error('[api/trends/teaser]', error);
     return NextResponse.json(

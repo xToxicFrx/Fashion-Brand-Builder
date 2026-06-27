@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { TrendSparkline } from '@/components/trend-sparkline';
 
 interface TrendAnalysis {
   keyword: string;
@@ -22,6 +23,8 @@ interface TrendAnalysis {
   suggestedPrice: number;
   related: string[];
   rationale: string;
+  dataSource?: 'google_trends' | 'ai_estimate';
+  timeline?: { date: string; value: number }[];
 }
 
 // Shown when the AI key isn't configured yet, so the page still demos the value.
@@ -34,6 +37,7 @@ const STATIC_EXAMPLE: TrendAnalysis = {
   related: ['cropped fit', 'baby blue', 'butterfly print', 'low rise'],
   rationale:
     'Strong, sustained search growth driven by nostalgia-led streetwear, with high resale and social engagement.',
+  dataSource: 'ai_estimate',
 };
 
 const MOMENTUM: Record<
@@ -45,15 +49,33 @@ const MOMENTUM: Record<
   declining: { label: '↓ Cooling', className: 'text-red-600' },
 };
 
+function DataSourceBadge({ source }: { source?: TrendAnalysis['dataSource'] }) {
+  if (source === 'google_trends') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+        ● Live Google Trends data
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      AI estimate
+    </span>
+  );
+}
+
 function ResultCard({ a, example }: { a: TrendAnalysis; example?: boolean }) {
   const m = MOMENTUM[a.predictionStatus];
   return (
     <Card className="border-primary/30 text-left">
       <CardHeader>
-        <CardDescription className="flex items-center gap-2 text-primary">
-          <TrendingUp className="h-4 w-4" />
-          {example ? 'Sample trend report' : 'Your trend report'}
-        </CardDescription>
+        <div className="flex items-center justify-between gap-2">
+          <CardDescription className="flex items-center gap-2 text-primary">
+            <TrendingUp className="h-4 w-4" />
+            {example ? 'Sample trend report' : 'Your trend report'}
+          </CardDescription>
+          <DataSourceBadge source={a.dataSource} />
+        </div>
         <CardTitle className="text-2xl">&ldquo;{a.keyword}&rdquo;</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -78,6 +100,14 @@ function ResultCard({ a, example }: { a: TrendAnalysis; example?: boolean }) {
             <p className="text-muted-foreground">Suggested price</p>
           </div>
         </div>
+        {a.timeline && a.timeline.length > 1 && (
+          <div>
+            <TrendSparkline data={a.timeline} className="h-20 w-full" />
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              Interest over the last 90 days
+            </p>
+          </div>
+        )}
         {a.related.length > 0 && (
           <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Related: </span>
@@ -110,7 +140,6 @@ export function TrendTeaser() {
       });
       const json = await res.json();
       if (!res.ok) {
-        // AI not configured yet → show a sample so the page still demonstrates value.
         if (res.status === 503) {
           setResult({ ...STATIC_EXAMPLE });
           setIsExample(true);

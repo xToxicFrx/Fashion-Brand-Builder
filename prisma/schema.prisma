@@ -81,6 +81,13 @@ model User {
   stores         Store[]
   reviews        Review[]
   collaborations Collaboration[]
+
+  // Trend Radar (FashionTrend AI)
+  trackedNiches TrackedNiche[]
+  savedIdeas    SavedIdea[]
+  collections   Collection[]
+  notifications Notification[]
+  onboarding    OnboardingProfile?
 }
 
 model Design {
@@ -206,4 +213,105 @@ model WaitlistSignup {
   sellsOn   String? // etsy | tiktok | instagram | own_store | nothing_yet
   source    String? // optional traffic-source tag (utm/referrer)
   createdAt DateTime @default(now())
+}
+
+// ----------------------------------------------------------------------------
+// Trend Radar / FashionTrend AI
+// ----------------------------------------------------------------------------
+
+model TrackedNiche {
+  id             String   @id @default(cuid())
+  userId         String
+  keyword        String
+  category       String?
+  alertThreshold Int? // notify when trendScore crosses this
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, keyword])
+}
+
+// Periodic snapshot of a keyword's trend score so we can show history + deltas.
+model TrendSnapshot {
+  id         String   @id @default(cuid())
+  keyword    String
+  trendScore Int
+  momentum   String // trending_up | peak | declining
+  source     String   @default("ai_estimate") // google_trends | ai_estimate
+  dataJson   String // JSON-encoded report payload (timeline, related, etc.)
+  createdAt  DateTime @default(now())
+
+  @@index([keyword, createdAt])
+}
+
+model SavedIdea {
+  id             String   @id @default(cuid())
+  userId         String
+  keyword        String
+  title          String
+  description    String?
+  suggestedPrice Float?
+  status         String   @default("idea") // idea | brief | designed | listed
+  briefJson      String? // generated design brief (JSON)
+  imageUrl       String? // AI concept image
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Collection {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  status      String    @default("planning") // planning | in_progress | launched
+  launchDate  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CollectionItem[]
+}
+
+model CollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  title        String
+  keyword      String?
+  status       String   @default("idea") // idea | designing | ready | listed
+  notes        String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // alert | digest | system
+  title     String
+  body      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model OnboardingProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  niches    String? // JSON array of niche keywords
+  style     String?
+  goals     String? // JSON array of goals
+  brandName String?
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

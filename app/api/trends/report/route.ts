@@ -1,0 +1,60 @@
+import { NextResponse } from 'next/server';
+
+import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+import { teaserSchema } from '@/lib/validations';
+import { getTrendReport } from '@/lib/trend-intelligence';
+import { stringifyJson } from '@/lib/json';
+
+/**
+ * Full trend report for a logged-in user (includes AI design ideas) and saves a
+ * snapshot so we can show history/deltas over time.
+ */
+export async function POST(request: Request) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const parsed = teaserSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+        { status: 400 },
+      );
+    }
+
+    const report = await getTrendReport(parsed.data.keyword, {
+      includeIdeas: true,
+    });
+
+    // Best-effort history snapshot — never fail the request over it.
+    try {
+      await prisma.trendSnapshot.create({
+        data: {
+          keyword: report.keyword,
+          trendScore: report.trendScore,
+          momentum: report.momentum,
+          source: report.dataSource,
+          dataJson: stringifyJson({
+            timeline: report.timeline,
+            related: report.risingQueries,
+            regions: report.regions,
+          }),
+        },
+      });
+    } catch (e) {
+      console.error('[api/trends/report] snapshot failed', e);
+    }
+
+    return NextResponse.json({ report });
+  } catch (error) {
+    console.error('[api/trends/report]', error);
+    return NextResponse.json(
+      { error: 'Trend analysis failed. Please try again.' },
+      { status: 502 },
+    );
+  }
+}
