@@ -223,3 +223,89 @@ export async function generateTrendInsights(params: {
     throw error instanceof Error ? error : new Error('OpenAI request failed.');
   }
 }
+
+export interface ColorSwatch {
+  name: string;
+  hex: string;
+}
+
+export interface DesignBrief {
+  concept: string;
+  palette: ColorSwatch[];
+  keyElements: string[];
+  typography: string;
+  audience: string;
+  suggestedPrice: number;
+  mockupPrompt: string;
+}
+
+/** Turn a trend-driven idea into a concrete, actionable design brief. */
+export async function generateDesignBrief(params: {
+  ideaTitle: string;
+  keyword: string;
+  description?: string;
+}): Promise<DesignBrief> {
+  const client = getOpenAI();
+  const { ideaTitle, keyword, description } = params;
+
+  const system =
+    'You are an apparel design director. Respond with a single strict JSON object only — no prose, no markdown. ' +
+    'Schema: {"concept": string (max 280 chars), "palette": array of 3-5 {"name": string, "hex": string (#RRGGBB)}, ' +
+    '"keyElements": string[] (3-6), "typography": string (max 80 chars), "audience": string (max 120 chars), ' +
+    '"suggestedPrice": number (USD), "mockupPrompt": string (a vivid prompt to generate a product mockup image, max 320 chars)}.';
+
+  const userPrompt = `Create a concrete design brief for the apparel idea "${ideaTitle}" in the "${keyword}" niche${
+    description ? ` (${description})` : ''
+  }. Make it specific and production-ready. Respond with JSON only.`;
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: MODEL,
+      max_tokens: 900,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: userPrompt },
+      ],
+    });
+
+    const text = completion.choices[0]?.message?.content ?? '';
+    const parsed = extractJson<Partial<DesignBrief>>(text);
+
+    return {
+      concept:
+        typeof parsed.concept === 'string'
+          ? parsed.concept.slice(0, 400)
+          : 'No concept provided.',
+      palette: Array.isArray(parsed.palette)
+        ? parsed.palette.slice(0, 6).map((c) => {
+            const sw = (c ?? {}) as Partial<ColorSwatch>;
+            const hex = String(sw.hex ?? '#000000');
+            return {
+              name: String(sw.name ?? 'Color'),
+              hex: /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : '#888888',
+            };
+          })
+        : [],
+      keyElements: Array.isArray(parsed.keyElements)
+        ? parsed.keyElements.slice(0, 6).map(String)
+        : [],
+      typography:
+        typeof parsed.typography === 'string'
+          ? parsed.typography.slice(0, 120)
+          : '',
+      audience:
+        typeof parsed.audience === 'string'
+          ? parsed.audience.slice(0, 160)
+          : '',
+      suggestedPrice: clamp(Number(parsed.suggestedPrice), 1, 100000),
+      mockupPrompt:
+        typeof parsed.mockupPrompt === 'string'
+          ? parsed.mockupPrompt.slice(0, 400)
+          : '',
+    };
+  } catch (error) {
+    console.error('[openai] generateDesignBrief failed:', error);
+    throw error instanceof Error ? error : new Error('OpenAI request failed.');
+  }
+}

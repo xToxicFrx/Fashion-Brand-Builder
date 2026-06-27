@@ -17,9 +17,9 @@ import { cn } from '@/lib/utils';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/trends', label: 'Trend Radar', icon: TrendingUp },
   { href: '/studio', label: 'Design Studio', icon: Palette },
   { href: '/designs', label: 'My Designs', icon: Images },
-  { href: '/trends', label: 'Trends', icon: TrendingUp },
   { href: '/store', label: 'Store', icon: Store },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/settings', label: 'Settings', icon: Settings },
