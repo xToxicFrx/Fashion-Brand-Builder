@@ -13,6 +13,7 @@ import {
   Sparkles,
   Layers,
   Calculator,
+  Megaphone,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ const NAV = [
   { href: '/studio', label: 'Design Studio', icon: Palette },
   { href: '/designs', label: 'My Designs', icon: Images },
   { href: '/pricing', label: 'Pricing', icon: Calculator },
+  { href: '/marketing', label: 'Marketing', icon: Megaphone },
   { href: '/store', label: 'Store', icon: Store },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/settings', label: 'Settings', icon: Settings },

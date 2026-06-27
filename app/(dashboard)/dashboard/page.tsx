@@ -135,7 +135,12 @@ export default async function DashboardPage() {
               <Link href="/trends" className="font-medium underline">
                 Trend Radar
               </Link>{' '}
-              to get personalized, data-grounded ideas on what to design next.
+              to get personalized, data-grounded ideas on what to design next —
+              or run the{' '}
+              <Link href="/onboarding" className="font-medium underline">
+                30-second setup
+              </Link>
+              .
             </CardContent>
           </Card>
         ) : (
