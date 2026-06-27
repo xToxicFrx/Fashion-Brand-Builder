@@ -370,3 +370,31 @@ export async function generateListingCopy(params: {
     throw error instanceof Error ? error : new Error('OpenAI request failed.');
   }
 }
+
+/**
+ * Generate an apparel concept/mockup image. Returns a temporary image URL
+ * (dall-e-3). Override the model with OPENAI_IMAGE_MODEL.
+ */
+export async function generateConceptImage(prompt: string): Promise<string> {
+  const client = getOpenAI();
+  const model = process.env.OPENAI_IMAGE_MODEL || 'dall-e-3';
+  const fullPrompt =
+    `Apparel product mockup, e-commerce catalog style, clean studio background, photorealistic. ${prompt}`.slice(
+      0,
+      1000,
+    );
+  try {
+    const result = await client.images.generate({
+      model,
+      prompt: fullPrompt,
+      size: '1024x1024',
+      n: 1,
+    });
+    const url = result.data?.[0]?.url;
+    if (!url) throw new Error('No image was returned.');
+    return url;
+  } catch (error) {
+    console.error('[openai] generateConceptImage failed:', error);
+    throw error instanceof Error ? error : new Error('Image generation failed.');
+  }
+}

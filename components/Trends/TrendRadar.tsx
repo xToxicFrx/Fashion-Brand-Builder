@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { TrendChart } from '@/components/Trends/TrendChart';
+import { MockupButton } from '@/components/Trends/MockupButton';
 
 interface DesignIdea {
   title: string;
@@ -128,7 +129,10 @@ function BriefView({ brief }: { brief: DesignBrief }) {
         </p>
       )}
       {brief.mockupPrompt && (
-        <p className="text-xs text-muted-foreground">{brief.mockupPrompt}</p>
+        <>
+          <p className="text-xs text-muted-foreground">{brief.mockupPrompt}</p>
+          <MockupButton prompt={brief.mockupPrompt} />
+        </>
       )}
     </div>
   );
