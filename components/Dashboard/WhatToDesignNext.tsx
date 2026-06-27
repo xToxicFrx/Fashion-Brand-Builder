@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Loader2, ArrowUpRight } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import {
   Card,
@@ -11,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 
 interface Idea {
   title: string;
@@ -69,20 +67,7 @@ export function WhatToDesignNext() {
             <p className="line-clamp-2 text-sm text-muted-foreground">
               {idea.description}
             </p>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">
-                ${idea.suggestedPrice}
-              </span>
-              <Button size="sm" variant="ghost" asChild>
-                <Link
-                  href={`/studio?name=${encodeURIComponent(
-                    idea.title,
-                  )}&brief=${encodeURIComponent(idea.description)}`}
-                >
-                  Studio <ArrowUpRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
+            <span className="text-sm font-semibold">${idea.suggestedPrice}</span>
           </CardContent>
         </Card>
       ))}
