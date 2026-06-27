@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
-import { LogOut, Plus, User as UserIcon } from 'lucide-react';
+import { LogOut, Search, User as UserIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,11 +23,11 @@ export function Header() {
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-background px-6">
-      <div className="md:hidden font-bold">Brand Builder</div>
+      <div className="md:hidden font-bold">Trend Radar</div>
       <div className="ml-auto flex items-center gap-3">
         <Button size="sm" asChild>
-          <Link href="/studio">
-            <Plus className="h-4 w-4" /> New design
+          <Link href="/trends">
+            <Search className="h-4 w-4" /> Analyze niche
           </Link>
         </Button>
         <DropdownMenu>

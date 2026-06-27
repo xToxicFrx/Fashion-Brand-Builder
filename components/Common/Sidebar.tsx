@@ -4,17 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  Palette,
-  Images,
   TrendingUp,
-  Store,
-  ShoppingBag,
-  Settings,
-  Sparkles,
+  Library,
   Layers,
   Calculator,
   Megaphone,
-  Library,
+  Settings,
+  Sparkles,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -24,12 +20,8 @@ const NAV = [
   { href: '/trends', label: 'Trend Radar', icon: TrendingUp },
   { href: '/library', label: 'Library', icon: Library },
   { href: '/collections', label: 'Collections', icon: Layers },
-  { href: '/studio', label: 'Design Studio', icon: Palette },
-  { href: '/designs', label: 'My Designs', icon: Images },
   { href: '/pricing', label: 'Pricing', icon: Calculator },
   { href: '/marketing', label: 'Marketing', icon: Megaphone },
-  { href: '/store', label: 'Store', icon: Store },
-  { href: '/orders', label: 'Orders', icon: ShoppingBag },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -40,7 +32,7 @@ export function Sidebar() {
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-background md:flex">
       <div className="flex h-16 items-center gap-2 border-b px-6 font-bold">
         <Sparkles className="h-5 w-5" />
-        <span>Brand Builder</span>
+        <span>Trend Radar</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV.map((item) => {
