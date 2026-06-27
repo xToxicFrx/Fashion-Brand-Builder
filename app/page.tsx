@@ -40,12 +40,20 @@ export default function LandingPage() {
           <Sparkles className="h-5 w-5" />
           Fashion Brand Builder
         </Link>
-        <a
-          href="#waitlist"
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-        >
-          Get early access
-        </a>
+        <nav className="flex items-center gap-4 text-sm">
+          <Link
+            href="/login"
+            className="text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Log in
+          </Link>
+          <a
+            href="#waitlist"
+            className="text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Get early access
+          </a>
+        </nav>
       </header>
 
       {/* Hero + live teaser */}
