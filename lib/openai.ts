@@ -309,3 +309,64 @@ export async function generateDesignBrief(params: {
     throw error instanceof Error ? error : new Error('OpenAI request failed.');
   }
 }
+
+export interface ListingCopy {
+  titles: string[];
+  description: string;
+  seoTags: string[];
+  socialHooks: string[];
+}
+
+/** Generate marketing copy (titles, description, SEO tags, social hooks). */
+export async function generateListingCopy(params: {
+  keyword: string;
+  productTitle?: string;
+  description?: string;
+}): Promise<ListingCopy> {
+  const client = getOpenAI();
+  const { keyword, productTitle, description } = params;
+
+  const system =
+    'You are a fashion e-commerce copywriter. Respond with a single strict JSON object only — no prose, no markdown. ' +
+    'Schema: {"titles": string[] (5 catchy product titles, max 70 chars each), ' +
+    '"description": string (a compelling product description, 50-120 words), ' +
+    '"seoTags": string[] (8 lowercase SEO/search tags), ' +
+    '"socialHooks": string[] (3 short TikTok/Instagram hooks, max 100 chars each)}.';
+
+  const subject = productTitle
+    ? `the product "${productTitle}" in the "${keyword}" niche`
+    : `a product in the "${keyword}" fashion niche`;
+  const userPrompt = `Write marketing copy for ${subject}${
+    description ? ` (${description})` : ''
+  }. Make it punchy and conversion-focused. Respond with JSON only.`;
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: MODEL,
+      max_tokens: 900,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: userPrompt },
+      ],
+    });
+    const text = completion.choices[0]?.message?.content ?? '';
+    const parsed = extractJson<Partial<ListingCopy>>(text);
+    return {
+      titles: Array.isArray(parsed.titles)
+        ? parsed.titles.slice(0, 5).map(String)
+        : [],
+      description:
+        typeof parsed.description === 'string' ? parsed.description : '',
+      seoTags: Array.isArray(parsed.seoTags)
+        ? parsed.seoTags.slice(0, 12).map(String)
+        : [],
+      socialHooks: Array.isArray(parsed.socialHooks)
+        ? parsed.socialHooks.slice(0, 4).map(String)
+        : [],
+    };
+  } catch (error) {
+    console.error('[openai] generateListingCopy failed:', error);
+    throw error instanceof Error ? error : new Error('OpenAI request failed.');
+  }
+}
