@@ -52,6 +52,21 @@ export function Plans({
     }
   }
 
+  async function openPortal() {
+    setLoading('portal');
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Could not open billing');
+      window.location.href = json.url;
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Could not open billing',
+      );
+      setLoading(null);
+    }
+  }
+
   function PlanCard({
     plan,
     cta,
@@ -86,7 +101,8 @@ export function Plans({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-3">
       <PlanCard
         plan={FREE}
         cta={
@@ -126,6 +142,18 @@ export function Plans({
           />
         );
       })}
+      </div>
+      {currentTier !== 'free' && billingEnabled && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={openPortal}
+          disabled={loading === 'portal'}
+        >
+          {loading === 'portal' && <Loader2 className="h-4 w-4 animate-spin" />}
+          Manage billing
+        </Button>
+      )}
     </div>
   );
 }
