@@ -414,7 +414,8 @@ export async function generateConceptImage(
       1000,
     );
 
-  let lastError: unknown;
+  const attempts: string[] = [];
+  let firstError: unknown;
   for (const model of models) {
     try {
       const result = await client.images.generate({
@@ -428,15 +429,20 @@ export async function generateConceptImage(
       if (item?.b64_json) return { b64: item.b64_json };
       throw new Error('No image was returned.');
     } catch (error) {
-      lastError = error;
+      if (firstError === undefined) firstError = error;
+      const detail = error instanceof Error ? error.message : String(error);
+      attempts.push(`${model}: ${detail}`);
+      // Log each attempt separately so the real reason a model fails (e.g.
+      // verification required vs. no access) is visible, not just the last one.
+      console.error(`[openai] image model "${model}" failed: ${detail}`);
       // A real failure (or an explicit override) shouldn't silently retry on a
       // different model; only fall through when this model is unavailable.
       if (override || !isModelUnavailable(error)) break;
-      console.warn(`[openai] image model "${model}" unavailable, trying next…`);
     }
   }
-  console.error('[openai] generateConceptImage failed:', lastError);
-  throw lastError instanceof Error
-    ? lastError
+  console.error('[openai] all image models failed:', attempts.join(' | '));
+  // Surface the first (preferred-model) error — it's the most actionable.
+  throw firstError instanceof Error
+    ? firstError
     : new Error('Image generation failed.');
 }
