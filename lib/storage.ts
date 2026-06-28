@@ -64,6 +64,30 @@ function publicUrl(path: string): string {
   return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
 }
 
+/** Upload raw image bytes to the bucket and return their permanent public URL. */
+async function uploadBytes(
+  bytes: Buffer,
+  contentType: string,
+  prefix?: string,
+): Promise<string> {
+  await ensureBucket();
+  const folder = (prefix ? `${prefix.replace(/^\/+|\/+$/g, '')}/` : '') + 'mockups';
+  const path = `${folder}/${randomUUID()}.${extensionFor(contentType)}`;
+  const upRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+    body: new Uint8Array(bytes),
+  });
+  if (!upRes.ok) {
+    throw new Error(`Upload failed: ${upRes.status} ${await upRes.text()}`);
+  }
+  return publicUrl(path);
+}
+
 /**
  * Download an image from a (possibly temporary) URL and upload it to Supabase
  * Storage, returning a permanent public URL. If Storage isn't configured — or
@@ -84,29 +108,42 @@ export async function persistImageFromUrl(
     }
     const contentType = imgRes.headers.get('content-type') || 'image/png';
     const bytes = Buffer.from(await imgRes.arrayBuffer());
-
-    await ensureBucket();
-
-    const folder = (prefix ? `${prefix.replace(/^\/+|\/+$/g, '')}/` : '') + 'mockups';
-    const path = `${folder}/${randomUUID()}.${extensionFor(contentType)}`;
-    const upRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
-      method: 'POST',
-      headers: {
-        ...authHeaders(),
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000, immutable',
-      },
-      body: bytes,
-    });
-    if (!upRes.ok) {
-      throw new Error(`Upload failed: ${upRes.status} ${await upRes.text()}`);
-    }
-    return publicUrl(path);
+    return await uploadBytes(bytes, contentType, prefix);
   } catch (error) {
     console.error(
       '[storage] persistImageFromUrl failed; falling back to source URL:',
       error,
     );
     return sourceUrl;
+  }
+}
+
+/**
+ * Persist a base64-encoded image (e.g. from gpt-image-1, which always returns
+ * b64 rather than a URL) into Supabase Storage and return a permanent public
+ * URL. When Storage isn't configured the image is returned as an inline data:
+ * URL so it still renders — note data URLs are too large to save to the
+ * database, so permanent saving requires Storage to be configured.
+ *
+ * @param b64    the base64 image payload (without the data: prefix)
+ * @param prefix optional folder prefix inside the bucket (e.g. the user id)
+ */
+export async function persistImageFromBase64(
+  b64: string,
+  prefix?: string,
+  contentType = 'image/png',
+): Promise<string> {
+  if (!isSupabaseStorageConfigured()) {
+    return `data:${contentType};base64,${b64}`;
+  }
+  try {
+    const bytes = Buffer.from(b64, 'base64');
+    return await uploadBytes(bytes, contentType, prefix);
+  } catch (error) {
+    console.error(
+      '[storage] persistImageFromBase64 failed; falling back to data URL:',
+      error,
+    );
+    return `data:${contentType};base64,${b64}`;
   }
 }

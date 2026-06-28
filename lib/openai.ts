@@ -371,30 +371,72 @@ export async function generateListingCopy(params: {
   }
 }
 
+/** A generated image is either a temporary URL (dall-e-*) or base64 data
+ * (gpt-image-1, which never returns a URL). */
+export type GeneratedImage = { url: string } | { b64: string };
+
+/** True when an OpenAI error means "this model isn't available to you" (so we
+ * should try the next candidate) rather than a content-policy/quota/transient
+ * failure (which we should surface instead of silently switching models). */
+function isModelUnavailable(error: unknown): boolean {
+  const err = error as { status?: number; message?: string };
+  const msg = (err?.message || '').toLowerCase();
+  return (
+    err?.status === 404 ||
+    err?.status === 403 ||
+    msg.includes('does not exist') ||
+    msg.includes('do not have access') ||
+    msg.includes("don't have access") ||
+    msg.includes('must be verified') ||
+    msg.includes('not supported')
+  );
+}
+
 /**
- * Generate an apparel concept/mockup image. Returns a temporary image URL
- * (dall-e-3). Override the model with OPENAI_IMAGE_MODEL.
+ * Generate an apparel concept/mockup image. Tries the current `gpt-image-1`
+ * model first (what the OpenAI Images playground uses today) and falls back to
+ * `dall-e-3`/`dall-e-2` if it isn't enabled on the account — so generation
+ * works without the caller having to know which models their key can reach.
+ * Set OPENAI_IMAGE_MODEL to pin a single model and skip the fallback.
+ *
+ * Returns a URL (dall-e-*) or base64 payload (gpt-image-1); the caller persists
+ * either form into permanent storage.
  */
-export async function generateConceptImage(prompt: string): Promise<string> {
+export async function generateConceptImage(
+  prompt: string,
+): Promise<GeneratedImage> {
   const client = getOpenAI();
-  const model = process.env.OPENAI_IMAGE_MODEL || 'dall-e-3';
+  const override = process.env.OPENAI_IMAGE_MODEL;
+  const models = override ? [override] : ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
   const fullPrompt =
     `Apparel product mockup, e-commerce catalog style, clean studio background, photorealistic. ${prompt}`.slice(
       0,
       1000,
     );
-  try {
-    const result = await client.images.generate({
-      model,
-      prompt: fullPrompt,
-      size: '1024x1024',
-      n: 1,
-    });
-    const url = result.data?.[0]?.url;
-    if (!url) throw new Error('No image was returned.');
-    return url;
-  } catch (error) {
-    console.error('[openai] generateConceptImage failed:', error);
-    throw error instanceof Error ? error : new Error('Image generation failed.');
+
+  let lastError: unknown;
+  for (const model of models) {
+    try {
+      const result = await client.images.generate({
+        model,
+        prompt: fullPrompt,
+        size: '1024x1024',
+        n: 1,
+      });
+      const item = result.data?.[0];
+      if (item?.url) return { url: item.url };
+      if (item?.b64_json) return { b64: item.b64_json };
+      throw new Error('No image was returned.');
+    } catch (error) {
+      lastError = error;
+      // A real failure (or an explicit override) shouldn't silently retry on a
+      // different model; only fall through when this model is unavailable.
+      if (override || !isModelUnavailable(error)) break;
+      console.warn(`[openai] image model "${model}" unavailable, trying next…`);
+    }
   }
+  console.error('[openai] generateConceptImage failed:', lastError);
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Image generation failed.');
 }

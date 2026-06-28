@@ -100,7 +100,10 @@ export function IdeaCard({
           description: idea.description,
           suggestedPrice: idea.suggestedPrice,
           brief,
-          imageUrl: mockupUrl ?? undefined,
+          // Only persist real stored URLs; an inline data: URL (Storage not
+          // configured) is too large for the DB and only used for live preview.
+          imageUrl:
+            mockupUrl && !mockupUrl.startsWith('data:') ? mockupUrl : undefined,
         }),
       });
       if (!res.ok) {
