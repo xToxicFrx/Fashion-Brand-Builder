@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Palette, Bookmark, Check } from 'lucide-react';
+import { Loader2, Palette, Bookmark, Check, Copy } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +65,37 @@ export function IdeaCard({
   const [mockupUrl, setMockupUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    const lines = [
+      `${idea.title} — $${idea.suggestedPrice} (${keyword})`,
+      idea.description,
+      idea.keyElements.length
+        ? `Key elements: ${idea.keyElements.join(', ')}`
+        : '',
+    ];
+    if (brief) {
+      lines.push(
+        '',
+        `Concept: ${brief.concept}`,
+        brief.palette.length
+          ? `Palette: ${brief.palette.map((c) => `${c.name} ${c.hex}`).join(', ')}`
+          : '',
+        brief.typography ? `Typography: ${brief.typography}` : '',
+        brief.audience ? `Audience: ${brief.audience}` : '',
+        brief.mockupPrompt ? `Mockup prompt: ${brief.mockupPrompt}` : '',
+      );
+    }
+    try {
+      await navigator.clipboard.writeText(lines.filter(Boolean).join('\n'));
+      setCopied(true);
+      toast.success('Copied to clipboard');
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error('Could not copy');
+    }
+  }
 
   async function makeBrief() {
     setBriefLoading(true);
@@ -168,6 +199,14 @@ export function IdeaCard({
               <Bookmark className="h-4 w-4" />
             )}
             {saved ? 'Saved' : 'Save'}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={copy}>
+            {copied ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+            Copy
           </Button>
         </div>
       </CardContent>
