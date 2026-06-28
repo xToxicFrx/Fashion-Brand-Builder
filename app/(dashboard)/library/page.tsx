@@ -5,6 +5,7 @@ import { LibraryView } from '@/components/Library/LibraryView';
 import type { TrendReport } from '@/lib/trend-types';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Library' };
 
 export default async function LibraryPage() {
   const user = await getCurrentUser();
