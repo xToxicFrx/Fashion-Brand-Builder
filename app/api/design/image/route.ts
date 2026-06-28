@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth';
 import { generateConceptImage, isOpenAIConfigured } from '@/lib/openai';
 import { persistImageFromBase64, persistImageFromUrl } from '@/lib/storage';
+import { track } from '@/lib/analytics';
 
 const schema = z.object({ prompt: z.string().trim().min(3).max(1000) });
 
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
       'url' in image
         ? await persistImageFromUrl(image.url, user.id)
         : await persistImageFromBase64(image.b64, user.id);
+    await track('mockup_generated', { userId: user.id });
     return NextResponse.json({ url });
   } catch (error) {
     console.error('[api/design/image]', error);

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { stringifyJson } from '@/lib/json';
+import { track } from '@/lib/analytics';
 
 /** Get the current user's onboarding profile (or null). */
 export async function GET() {
@@ -69,6 +70,11 @@ export async function POST(request: Request) {
       })
       .catch(() => {});
   }
+
+  await track('onboarding_complete', {
+    userId: user.id,
+    meta: { niches: niches.length, goals: goals.length },
+  });
 
   return NextResponse.json({ ok: true });
 }

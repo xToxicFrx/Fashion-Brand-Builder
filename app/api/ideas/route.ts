@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { stringifyJson } from '@/lib/json';
+import { track } from '@/lib/analytics';
 
 /** List the current user's saved design ideas (newest first). */
 export async function GET() {
@@ -57,6 +58,11 @@ export async function POST(request: Request) {
         briefJson: brief ? stringifyJson(brief) : null,
         imageUrl: imageUrl ?? null,
       },
+    });
+    await track('idea_saved', {
+      userId: user.id,
+      keyword,
+      meta: { hasBrief: Boolean(brief), hasImage: Boolean(imageUrl) },
     });
     return NextResponse.json({ idea });
   } catch (error) {
