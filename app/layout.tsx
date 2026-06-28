@@ -5,7 +5,10 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'Know what to design next — Fashion Brand Builder',
+  title: {
+    default: 'Know what to design next — Fashion Brand Builder',
+    template: '%s — Fashion Brand Builder',
+  },
   description:
     'AI trend intelligence for independent fashion designers: see which designs and products are about to trend, before you make them.',
 };

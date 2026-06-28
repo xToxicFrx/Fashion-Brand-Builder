@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { TrendRadar } from '@/components/Trends/TrendRadar';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Trend Radar' };
 
 export default async function TrendsPage({
   searchParams,

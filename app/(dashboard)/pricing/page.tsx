@@ -1,5 +1,7 @@
 import { MarginCalculator } from '@/components/Pricing/MarginCalculator';
 
+export const metadata = { title: 'Pricing & margins' };
+
 export default function PricingPage() {
   return (
     <div className="space-y-6">

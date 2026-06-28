@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Dashboard' };
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
