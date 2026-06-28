@@ -397,7 +397,8 @@ function isModelUnavailable(error: unknown): boolean {
  * model first (what the OpenAI Images playground uses today) and falls back to
  * `dall-e-3`/`dall-e-2` if it isn't enabled on the account — so generation
  * works without the caller having to know which models their key can reach.
- * Set OPENAI_IMAGE_MODEL to pin a single model and skip the fallback.
+ * OPENAI_IMAGE_MODEL, if set, is tried first as a preference but does NOT
+ * replace the chain, so a stale/unavailable override can't block generation.
  *
  * Returns a URL (dall-e-*) or base64 payload (gpt-image-1); the caller persists
  * either form into permanent storage.
@@ -406,8 +407,12 @@ export async function generateConceptImage(
   prompt: string,
 ): Promise<GeneratedImage> {
   const client = getOpenAI();
-  const override = process.env.OPENAI_IMAGE_MODEL;
-  const models = override ? [override] : ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
+  // Preferred model (if configured) is tried first, then the rest of the chain.
+  const preferred = process.env.OPENAI_IMAGE_MODEL;
+  const defaults = ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
+  const models = preferred
+    ? [preferred, ...defaults.filter((m) => m !== preferred)]
+    : defaults;
   const fullPrompt =
     `Apparel product mockup, e-commerce catalog style, clean studio background, photorealistic. ${prompt}`.slice(
       0,
@@ -435,9 +440,9 @@ export async function generateConceptImage(
       // Log each attempt separately so the real reason a model fails (e.g.
       // verification required vs. no access) is visible, not just the last one.
       console.error(`[openai] image model "${model}" failed: ${detail}`);
-      // A real failure (or an explicit override) shouldn't silently retry on a
-      // different model; only fall through when this model is unavailable.
-      if (override || !isModelUnavailable(error)) break;
+      // Only a "model unavailable" error falls through to the next candidate;
+      // a real failure (content policy, quota) stops the chain immediately.
+      if (!isModelUnavailable(error)) break;
     }
   }
   console.error('[openai] all image models failed:', attempts.join(' | '));
