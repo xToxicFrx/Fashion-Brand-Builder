@@ -148,15 +148,17 @@ export async function generateTrendInsights(params: {
     params;
 
   const ideasInstruction = includeIdeas
-    ? '"designIdeas": array of exactly 3 objects {"title": string, "description": string (max 160 chars), "suggestedPrice": number (USD), "keyElements": string[] (2-4 items)}'
+    ? '"designIdeas": array of exactly 3 DISTINCT objects {"title": string (the specific garment + concept, not generic), "description": string (max 160 chars: name the garment, the concrete graphic/visual concept, and why it fits this trend right now), "suggestedPrice": number (USD, realistic for the niche), "keyElements": string[] (2-4 concrete visual elements: motifs, colors, placement, technique)}'
     : '"designIdeas": []';
 
   const system =
     'You are a fashion trend analyst for an independent-designer platform. ' +
+    'Be specific, current and commercially useful: prefer concrete, production-ready ideas a small brand could actually make and sell over generic advice. ' +
+    'When real data is provided, ground the score and rationale in it; otherwise estimate conservatively and keep numbers plausible. ' +
     'Respond with a single strict JSON object only — no prose, no markdown. ' +
     'Schema: {"trendScore": number (0-100), "demandLabel": "low"|"medium"|"high", ' +
-    '"suggestedPrice": number (USD retail), "audience": string (max 120 chars), ' +
-    '"rationale": string (max 240 chars), "related": string[] (3-6 related keywords), ' +
+    '"suggestedPrice": number (USD retail), "audience": string (max 120 chars, the specific buyer), ' +
+    '"rationale": string (max 240 chars, reference the momentum and what is driving it), "related": string[] (3-6 related keywords), ' +
     ideasInstruction +
     '}.';
 
@@ -168,9 +170,9 @@ export async function generateTrendInsights(params: {
       }. Base your rationale on these real numbers.`
     : 'No live data is available; estimate from your own knowledge and keep numbers plausible.';
 
-  const userPrompt = `Analyze the fashion niche/keyword "${keyword}" for an independent apparel designer. ${dataContext} Provide demand level, a recommended USD retail price, the core audience, a brief rationale, related keywords${
+  const userPrompt = `Analyze the fashion niche/keyword "${keyword}" for an independent apparel designer. ${dataContext} Provide demand level, a recommended USD retail price, the specific core audience, a sharp rationale, related keywords${
     includeIdeas
-      ? ', and 3 concrete, specific product/design ideas with prices and key visual elements'
+      ? ', and exactly 3 distinct, production-ready design ideas — each naming the garment, a specific graphic/visual concept, 2-4 key visual elements and a realistic price'
       : ''
   }. Respond with JSON only.`;
 
@@ -249,14 +251,15 @@ export async function generateDesignBrief(params: {
   const { ideaTitle, keyword, description } = params;
 
   const system =
-    'You are an apparel design director. Respond with a single strict JSON object only — no prose, no markdown. ' +
-    'Schema: {"concept": string (max 280 chars), "palette": array of 3-5 {"name": string, "hex": string (#RRGGBB)}, ' +
-    '"keyElements": string[] (3-6), "typography": string (max 80 chars), "audience": string (max 120 chars), ' +
-    '"suggestedPrice": number (USD), "mockupPrompt": string (a vivid prompt to generate a product mockup image, max 320 chars)}.';
+    'You are an apparel design director briefing a small brand. Be concrete and production-ready — every field should be something a designer can act on immediately. ' +
+    'Respond with a single strict JSON object only — no prose, no markdown. ' +
+    'Schema: {"concept": string (max 280 chars, the garment + the visual story), "palette": array of 3-5 {"name": string, "hex": string (#RRGGBB)}, ' +
+    '"keyElements": string[] (3-6 concrete design elements), "typography": string (max 80 chars, a real font style/pairing), "audience": string (max 120 chars, the specific buyer), ' +
+    '"suggestedPrice": number (USD), "mockupPrompt": string (a vivid, specific prompt to generate a photorealistic product mockup image: garment, colors, graphic placement, style — max 320 chars)}.';
 
-  const userPrompt = `Create a concrete design brief for the apparel idea "${ideaTitle}" in the "${keyword}" niche${
+  const userPrompt = `Create a concrete, production-ready design brief for the apparel idea "${ideaTitle}" in the "${keyword}" niche${
     description ? ` (${description})` : ''
-  }. Make it specific and production-ready. Respond with JSON only.`;
+  }. Be specific: real colors, real placement, a buyer a small brand can target. Respond with JSON only.`;
 
   try {
     const completion = await client.chat.completions.create({
