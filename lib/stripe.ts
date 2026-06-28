@@ -34,3 +34,40 @@ export function appUrl(path = ''): string {
     'http://localhost:3000';
   return `${base.replace(/\/$/, '')}${path}`;
 }
+
+/** Paid subscription plans. Price IDs and display labels come from env so the
+ * account owner configures real prices without code changes. A plan with no
+ * price ID set is shown but not yet purchasable. Limits live in lib/limits.ts. */
+export type PlanId = 'starter' | 'pro';
+
+export interface PlanConfig {
+  id: PlanId;
+  name: string;
+  priceId: string | undefined;
+  /** Display only (e.g. "$9/mo"). Set STRIPE_PRICE_<PLAN>_LABEL to override. */
+  priceLabel: string;
+  highlights: string[];
+}
+
+export function getPlans(): PlanConfig[] {
+  return [
+    {
+      id: 'starter',
+      name: 'Starter',
+      priceId: process.env.STRIPE_PRICE_STARTER,
+      priceLabel: process.env.STRIPE_PRICE_STARTER_LABEL ?? '$9/mo',
+      highlights: ['300 trend reports/mo', '300 briefs/mo', '150 mockups/mo'],
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      priceId: process.env.STRIPE_PRICE_PRO,
+      priceLabel: process.env.STRIPE_PRICE_PRO_LABEL ?? '$29/mo',
+      highlights: ['Unlimited reports', 'Unlimited briefs', 'Unlimited mockups'],
+    },
+  ];
+}
+
+export function getPlan(id: string): PlanConfig | undefined {
+  return getPlans().find((p) => p.id === id);
+}
