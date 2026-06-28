@@ -10,6 +10,7 @@ import {
   isOpenAIConfigured,
   type DesignIdea,
 } from '@/lib/openai';
+import { prisma } from '@/lib/db';
 
 export type Momentum = 'trending_up' | 'peak' | 'declining';
 
@@ -30,9 +31,41 @@ export interface TrendReport {
   generatedAt: string;
 }
 
-// In-memory cache to bound external/AI calls. (Per serverless instance.)
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+// Two-layer cache to bound external/AI calls:
+//  - in-memory: fastest, but per serverless instance and lost on cold starts.
+//  - durable (ReportCache table): cross-user, survives cold starts, cuts cost.
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h (in-memory)
+const DURABLE_TTL_MS = 24 * 60 * 60 * 1000; // 24h (DB)
 const cache = new Map<string, { at: number; report: TrendReport }>();
+
+/** Read a fresh report from the durable cache, or null. Never throws. */
+async function readDurableCache(key: string): Promise<TrendReport | null> {
+  try {
+    const row = await prisma.reportCache.findUnique({ where: { key } });
+    if (!row) return null;
+    if (Date.now() - row.updatedAt.getTime() > DURABLE_TTL_MS) return null;
+    return JSON.parse(row.reportJson) as TrendReport;
+  } catch {
+    return null;
+  }
+}
+
+/** Upsert a report into the durable cache. Best-effort; never throws. */
+async function writeDurableCache(
+  key: string,
+  report: TrendReport,
+): Promise<void> {
+  try {
+    const reportJson = JSON.stringify(report);
+    await prisma.reportCache.upsert({
+      where: { key },
+      update: { reportJson },
+      create: { key, reportJson },
+    });
+  } catch {
+    // ignore — caching is best-effort
+  }
+}
 
 function deriveScoreFromLabel(label: 'low' | 'medium' | 'high'): number {
   return label === 'high' ? 82 : label === 'low' ? 35 : 60;
@@ -53,6 +86,13 @@ export async function getTrendReport(
   const cacheKey = `${trimmed.toLowerCase()}|${opts.includeIdeas ? 'ideas' : 'basic'}|${opts.geo ?? ''}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.report;
+
+  // Durable cache (survives cold starts, shared across users).
+  const cached = await readDurableCache(cacheKey);
+  if (cached) {
+    cache.set(cacheKey, { at: Date.now(), report: cached });
+    return cached;
+  }
 
   let dataSource: TrendReport['dataSource'] = 'ai_estimate';
   let timeline: TrendTimelinePoint[] = [];
@@ -119,6 +159,12 @@ export async function getTrendReport(
     generatedAt: new Date().toISOString(),
   };
 
-  cache.set(cacheKey, { at: Date.now(), report });
+  // Don't cache a degraded fallback (no AI insights and no real data) so a
+  // transient OpenAI/Trends outage retries next time instead of sticking.
+  const degraded = !insights && dataSource !== 'google_trends';
+  if (!degraded) {
+    cache.set(cacheKey, { at: Date.now(), report });
+    await writeDurableCache(cacheKey, report);
+  }
   return report;
 }

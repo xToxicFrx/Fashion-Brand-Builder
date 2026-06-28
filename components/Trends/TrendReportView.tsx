@@ -75,15 +75,20 @@ export function TrendReportView({
             </div>
             <div className="flex items-center gap-2">
               <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                title={
+                  report.dataSource === 'google_trends'
+                    ? 'Scored from live Google Trends search interest over the last 90 days.'
+                    : 'Estimated by AI from market knowledge — live search data wasn’t available. Track this niche to refine it over time.'
+                }
+                className={`cursor-help rounded-full px-2 py-0.5 text-xs font-medium ${
                   report.dataSource === 'google_trends'
                     ? 'bg-green-100 text-green-700'
-                    : 'bg-muted text-muted-foreground'
+                    : 'bg-amber-100 text-amber-700'
                 }`}
               >
                 {report.dataSource === 'google_trends'
                   ? '● Live Google Trends data'
-                  : 'AI estimate'}
+                  : '✦ AI estimate'}
               </span>
               {onTrack && (
                 <Button

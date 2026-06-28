@@ -350,3 +350,17 @@ model Event {
   @@index([type, createdAt])
   @@index([userId, createdAt])
 }
+
+// Durable, cross-user cache of computed trend reports so repeat lookups are
+// instant and don't re-spend on Google Trends / OpenAI. Keyed by
+// keyword|variant|geo (see getTrendReport). Survives serverless cold starts,
+// unlike the per-instance in-memory cache. Additive; safe to drop/rebuild.
+model ReportCache {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  reportJson String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([updatedAt])
+}
