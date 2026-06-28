@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Image as ImageIcon } from 'lucide-react';
+import { Loader2, Image as ImageIcon, Download } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { downloadImage } from '@/lib/download';
 
 /** Generates an AI concept/mockup image from a prompt and shows it inline. */
 export function MockupButton({
@@ -41,12 +42,21 @@ export function MockupButton({
 
   if (url) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt="AI concept mockup"
-        className="mt-2 w-full rounded-md border"
-      />
+      <div className="mt-2 space-y-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt="AI concept mockup"
+          className="w-full rounded-md border"
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => downloadImage(url, 'mockup.png')}
+        >
+          <Download className="h-4 w-4" /> Download
+        </Button>
+      </div>
     );
   }
 
