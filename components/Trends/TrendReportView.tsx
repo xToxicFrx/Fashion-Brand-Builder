@@ -52,11 +52,14 @@ export function TrendReportView({
   onTrack,
   tracking,
   tracked,
+  onSearchKeyword,
 }: {
   report: TrendReport;
   onTrack?: () => void;
   tracking?: boolean;
   tracked?: boolean;
+  /** When provided, rising related searches become clickable to analyze them. */
+  onSearchKeyword?: (keyword: string) => void;
 }) {
   const m = MOMENTUM[report.momentum] ?? MOMENTUM.trending_up;
 
@@ -131,14 +134,26 @@ export function TrendReportView({
               <div>
                 <p className="mb-1 text-sm font-medium">Rising related searches</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {report.risingQueries.map((q) => (
-                    <span
-                      key={q}
-                      className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground"
-                    >
-                      {q}
-                    </span>
-                  ))}
+                  {report.risingQueries.map((q) =>
+                    onSearchKeyword ? (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => onSearchKeyword(q)}
+                        title={`Analyze “${q}”`}
+                        className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        {q}
+                      </button>
+                    ) : (
+                      <span
+                        key={q}
+                        className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground"
+                      >
+                        {q}
+                      </span>
+                    ),
+                  )}
                 </div>
               </div>
             )}

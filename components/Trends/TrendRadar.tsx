@@ -122,6 +122,7 @@ export function TrendRadar({ initialKeyword = '' }: { initialKeyword?: string })
           onTrack={track}
           tracking={tracking}
           tracked={tracked}
+          onSearchKeyword={searchFor}
         />
       )}
     </div>
