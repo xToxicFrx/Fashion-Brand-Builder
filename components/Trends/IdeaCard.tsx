@@ -15,7 +15,13 @@ import {
 import { MockupButton } from '@/components/Trends/MockupButton';
 import type { DesignIdea, DesignBrief } from '@/lib/trend-types';
 
-function BriefView({ brief }: { brief: DesignBrief }) {
+function BriefView({
+  brief,
+  onMockup,
+}: {
+  brief: DesignBrief;
+  onMockup?: (url: string) => void;
+}) {
   return (
     <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-left">
       <p className="text-xs text-muted-foreground">{brief.concept}</p>
@@ -40,7 +46,7 @@ function BriefView({ brief }: { brief: DesignBrief }) {
       {brief.mockupPrompt && (
         <>
           <p className="text-xs text-muted-foreground">{brief.mockupPrompt}</p>
-          <MockupButton prompt={brief.mockupPrompt} />
+          <MockupButton prompt={brief.mockupPrompt} onGenerated={onMockup} />
         </>
       )}
     </div>
@@ -56,6 +62,7 @@ export function IdeaCard({
 }) {
   const [brief, setBrief] = useState<DesignBrief | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
+  const [mockupUrl, setMockupUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -93,6 +100,10 @@ export function IdeaCard({
           description: idea.description,
           suggestedPrice: idea.suggestedPrice,
           brief,
+          // Only persist real stored URLs; an inline data: URL (Storage not
+          // configured) is too large for the DB and only used for live preview.
+          imageUrl:
+            mockupUrl && !mockupUrl.startsWith('data:') ? mockupUrl : undefined,
         }),
       });
       if (!res.ok) {
@@ -128,7 +139,7 @@ export function IdeaCard({
             ))}
           </div>
         )}
-        {brief && <BriefView brief={brief} />}
+        {brief && <BriefView brief={brief} onMockup={setMockupUrl} />}
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"

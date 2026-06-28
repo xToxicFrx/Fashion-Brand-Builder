@@ -7,7 +7,14 @@ import { Loader2, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /** Generates an AI concept/mockup image from a prompt and shows it inline. */
-export function MockupButton({ prompt }: { prompt: string }) {
+export function MockupButton({
+  prompt,
+  onGenerated,
+}: {
+  prompt: string;
+  /** Called with the persisted image URL once generation succeeds. */
+  onGenerated?: (url: string) => void;
+}) {
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
 
@@ -22,6 +29,7 @@ export function MockupButton({ prompt }: { prompt: string }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Could not generate image');
       setUrl(json.url);
+      onGenerated?.(json.url);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : 'Could not generate image',
