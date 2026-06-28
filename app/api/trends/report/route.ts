@@ -6,6 +6,7 @@ import { teaserSchema } from '@/lib/validations';
 import { getTrendReport } from '@/lib/trend-intelligence';
 import { stringifyJson } from '@/lib/json';
 import { track } from '@/lib/analytics';
+import { jsonError, logError } from '@/lib/api';
 
 /**
  * Full trend report for a logged-in user (includes AI design ideas) and saves a
@@ -15,16 +16,13 @@ export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return jsonError('Unauthorized', 401);
     }
 
     const body = await request.json();
     const parsed = teaserSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
-        { status: 400 },
-      );
+      return jsonError(parsed.error.issues[0]?.message ?? 'Invalid input', 400);
     }
 
     const report = await getTrendReport(parsed.data.keyword, {
@@ -47,7 +45,7 @@ export async function POST(request: Request) {
         },
       });
     } catch (e) {
-      console.error('[api/trends/report] snapshot failed', e);
+      logError('api/trends/report:snapshot', e);
     }
 
     // Auto-save the full report per user so it's instantly re-openable later.
@@ -70,7 +68,7 @@ export async function POST(request: Request) {
         },
       });
     } catch (e) {
-      console.error('[api/trends/report] saveReport failed', e);
+      logError('api/trends/report:saveReport', e);
     }
 
     await track('report_generated', {
@@ -81,10 +79,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ report });
   } catch (error) {
-    console.error('[api/trends/report]', error);
-    return NextResponse.json(
-      { error: 'Trend analysis failed. Please try again.' },
-      { status: 502 },
-    );
+    logError('api/trends/report', error);
+    return jsonError('Trend analysis failed. Please try again.', 502);
   }
 }
