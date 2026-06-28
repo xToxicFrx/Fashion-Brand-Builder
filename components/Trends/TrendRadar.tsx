@@ -123,6 +123,21 @@ export function TrendRadar({ initialKeyword = '' }: { initialKeyword?: string })
         </div>
       )}
 
+      {loading && (
+        <div className="space-y-4 rounded-lg border p-6">
+          <div className="h-6 w-40 animate-pulse rounded bg-muted" />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-7 w-16 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+              </div>
+            ))}
+          </div>
+          <div className="h-24 w-full animate-pulse rounded bg-muted" />
+        </div>
+      )}
+
       {report && (
         <TrendReportView
           report={report}
