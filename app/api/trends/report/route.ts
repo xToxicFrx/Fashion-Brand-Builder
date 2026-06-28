@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { teaserSchema } from '@/lib/validations';
 import { getTrendReport } from '@/lib/trend-intelligence';
 import { stringifyJson } from '@/lib/json';
+import { track } from '@/lib/analytics';
 
 /**
  * Full trend report for a logged-in user (includes AI design ideas) and saves a
@@ -71,6 +72,12 @@ export async function POST(request: Request) {
     } catch (e) {
       console.error('[api/trends/report] saveReport failed', e);
     }
+
+    await track('report_generated', {
+      userId: user.id,
+      keyword: report.keyword,
+      meta: { source: report.dataSource, trendScore: report.trendScore },
+    });
 
     return NextResponse.json({ report });
   } catch (error) {

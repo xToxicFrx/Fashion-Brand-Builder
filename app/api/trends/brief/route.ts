@@ -6,6 +6,7 @@ import {
   generateDesignBrief,
   isOpenAIConfigured,
 } from '@/lib/openai';
+import { track } from '@/lib/analytics';
 
 const briefSchema = z.object({
   ideaTitle: z.string().trim().min(2).max(120),
@@ -37,6 +38,10 @@ export async function POST(request: Request) {
     }
 
     const brief = await generateDesignBrief(parsed.data);
+    await track('brief_generated', {
+      userId: user.id,
+      keyword: parsed.data.keyword,
+    });
     return NextResponse.json({ brief });
   } catch (error) {
     console.error('[api/trends/brief]', error);

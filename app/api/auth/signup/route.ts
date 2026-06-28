@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 
 import { prisma } from '@/lib/db';
 import { signupSchema } from '@/lib/validations';
+import { track } from '@/lib/analytics';
 
 /** Create a new user with a hashed password (Credentials-provider sign-up). */
 export async function POST(request: Request) {
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     const user = await prisma.user.create({
       data: { name, email, hashedPassword, role },
     });
+    await track('signup', { userId: user.id, meta: { role } });
 
     return NextResponse.json({ id: user.id, email: user.email });
   } catch (error) {

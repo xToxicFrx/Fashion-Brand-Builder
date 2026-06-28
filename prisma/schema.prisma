@@ -334,3 +334,19 @@ model SavedReport {
 
   @@unique([userId, keyword])
 }
+
+// Lightweight product analytics: one row per tracked user action. Powers the
+// admin funnel/metrics view and (Phase C) usage metering. Intentionally
+// decoupled from User (plain userId string, nullable) so pre-auth events can be
+// recorded and a user deletion never cascades away the metrics history.
+model Event {
+  id        String   @id @default(cuid())
+  userId    String? // null for anonymous / pre-auth events
+  type      String // signup | onboarding_complete | report_generated | idea_saved | brief_generated | mockup_generated | paywall_hit | checkout_started | subscribed
+  keyword   String? // optional context (e.g. the niche)
+  meta      String? // optional JSON-encoded extra context
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+}
