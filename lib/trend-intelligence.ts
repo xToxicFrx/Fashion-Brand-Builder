@@ -11,6 +11,7 @@ import {
   type DesignIdea,
 } from '@/lib/openai';
 import { prisma } from '@/lib/db';
+import { stringifyJson } from '@/lib/json';
 
 export type Momentum = 'trending_up' | 'peak' | 'declining';
 
@@ -167,4 +168,54 @@ export async function getTrendReport(
     await writeDurableCache(cacheKey, report);
   }
   return report;
+}
+
+/**
+ * Persist a generated report's history artifacts: a TrendSnapshot (powers
+ * sparklines/deltas) and the per-user SavedReport (instant re-open in the
+ * Library and on the dashboard). Best-effort — never throws, so callers can run
+ * it without guarding the request it accompanies.
+ */
+export async function persistReportArtifacts(
+  userId: string,
+  report: TrendReport,
+): Promise<void> {
+  try {
+    await prisma.trendSnapshot.create({
+      data: {
+        keyword: report.keyword,
+        trendScore: report.trendScore,
+        momentum: report.momentum,
+        source: report.dataSource,
+        dataJson: stringifyJson({
+          timeline: report.timeline,
+          related: report.risingQueries,
+          regions: report.regions,
+        }),
+      },
+    });
+  } catch (e) {
+    console.error('[trend-intelligence] snapshot failed', e);
+  }
+  try {
+    await prisma.savedReport.upsert({
+      where: { userId_keyword: { userId, keyword: report.keyword } },
+      update: {
+        trendScore: report.trendScore,
+        momentum: report.momentum,
+        dataSource: report.dataSource,
+        reportJson: stringifyJson(report),
+      },
+      create: {
+        userId,
+        keyword: report.keyword,
+        trendScore: report.trendScore,
+        momentum: report.momentum,
+        dataSource: report.dataSource,
+        reportJson: stringifyJson(report),
+      },
+    });
+  } catch (e) {
+    console.error('[trend-intelligence] saveReport failed', e);
+  }
 }

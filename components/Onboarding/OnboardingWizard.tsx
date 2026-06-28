@@ -165,7 +165,7 @@ export function OnboardingWizard() {
 
       <Button onClick={submit} disabled={saving} size="lg" className="w-full">
         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-        Build my radar
+        {saving ? 'Building your radar…' : 'Build my radar'}
       </Button>
     </div>
   );
