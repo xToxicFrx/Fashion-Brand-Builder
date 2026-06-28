@@ -5,6 +5,10 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { stringifyJson } from '@/lib/json';
 import { track } from '@/lib/analytics';
+import {
+  getTrendReport,
+  persistReportArtifacts,
+} from '@/lib/trend-intelligence';
 
 /** Get the current user's onboarding profile (or null). */
 export async function GET() {
@@ -69,6 +73,18 @@ export async function POST(request: Request) {
         create: { userId: user.id, keyword },
       })
       .catch(() => {});
+  }
+
+  // Seed the first niche so the dashboard lands with a real score, a saved
+  // report and instant ideas — the new user's first "aha". Best-effort.
+  const firstNiche = niches[0];
+  if (firstNiche) {
+    try {
+      const report = await getTrendReport(firstNiche, { includeIdeas: true });
+      await persistReportArtifacts(user.id, report);
+    } catch (e) {
+      console.error('[api/onboarding] seed first niche failed', e);
+    }
   }
 
   await track('onboarding_complete', {
