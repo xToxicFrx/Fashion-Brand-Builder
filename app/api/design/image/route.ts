@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { generateConceptImage, isOpenAIConfigured } from '@/lib/openai';
 import { persistImageFromBase64, persistImageFromUrl } from '@/lib/storage';
 import { track } from '@/lib/analytics';
+import { jsonError, logError } from '@/lib/api';
 
 const schema = z.object({ prompt: z.string().trim().min(3).max(1000) });
 
@@ -13,21 +14,15 @@ export async function POST(request: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return jsonError('Unauthorized', 401);
     }
     if (!isOpenAIConfigured()) {
-      return NextResponse.json(
-        { error: 'AI is not configured. Set OPENAI_API_KEY.' },
-        { status: 503 },
-      );
+      return jsonError('AI is not configured. Set OPENAI_API_KEY.', 503);
     }
     const body = await request.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
-        { status: 400 },
-      );
+      return jsonError(parsed.error.issues[0]?.message ?? 'Invalid input', 400);
     }
     // generateConceptImage returns either a temporary dall-e URL (expires after
     // ~1-2h) or base64 data (gpt-image-1). Either way, copy it into Supabase
@@ -41,13 +36,10 @@ export async function POST(request: Request) {
     await track('mockup_generated', { userId: user.id });
     return NextResponse.json({ url });
   } catch (error) {
-    console.error('[api/design/image]', error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'Image generation failed.',
-      },
-      { status: 502 },
+    logError('api/design/image', error);
+    return jsonError(
+      error instanceof Error ? error.message : 'Image generation failed.',
+      502,
     );
   }
 }
