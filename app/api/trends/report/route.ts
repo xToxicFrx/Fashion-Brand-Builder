@@ -8,6 +8,7 @@ import {
 } from '@/lib/trend-intelligence';
 import { track } from '@/lib/analytics';
 import { jsonError, logError } from '@/lib/api';
+import { checkQuota } from '@/lib/limits';
 
 /**
  * Full trend report for a logged-in user (includes AI design ideas) and saves a
@@ -24,6 +25,19 @@ export async function POST(request: Request) {
     const parsed = teaserSchema.safeParse(body);
     if (!parsed.success) {
       return jsonError(parsed.error.issues[0]?.message ?? 'Invalid input', 400);
+    }
+
+    const tier = user.subscriptionTier ?? 'free';
+    const quota = await checkQuota(user.id, tier, 'report');
+    if (!quota.allowed) {
+      await track('paywall_hit', {
+        userId: user.id,
+        meta: { feature: 'report', used: quota.used, limit: quota.limit },
+      });
+      return jsonError(
+        `You've used all ${quota.limit} trend reports in your free plan this month. Your limit resets on the 1st.`,
+        429,
+      );
     }
 
     const report = await getTrendReport(parsed.data.keyword, {

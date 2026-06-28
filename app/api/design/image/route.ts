@@ -6,6 +6,7 @@ import { generateConceptImage, isOpenAIConfigured } from '@/lib/openai';
 import { persistImageFromBase64, persistImageFromUrl } from '@/lib/storage';
 import { track } from '@/lib/analytics';
 import { jsonError, logError } from '@/lib/api';
+import { checkQuota } from '@/lib/limits';
 
 const schema = z.object({ prompt: z.string().trim().min(3).max(1000) });
 
@@ -23,6 +24,19 @@ export async function POST(request: Request) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return jsonError(parsed.error.issues[0]?.message ?? 'Invalid input', 400);
+    }
+
+    const tier = user.subscriptionTier ?? 'free';
+    const quota = await checkQuota(user.id, tier, 'mockup');
+    if (!quota.allowed) {
+      await track('paywall_hit', {
+        userId: user.id,
+        meta: { feature: 'mockup', used: quota.used, limit: quota.limit },
+      });
+      return jsonError(
+        `You've used all ${quota.limit} mockups in your free plan this month. Your limit resets on the 1st.`,
+        429,
+      );
     }
     // generateConceptImage returns either a temporary dall-e URL (expires after
     // ~1-2h) or base64 data (gpt-image-1). Either way, copy it into Supabase
