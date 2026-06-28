@@ -9,6 +9,16 @@ import { Input } from '@/components/ui/input';
 import { TrendReportView } from '@/components/Trends/TrendReportView';
 import type { TrendReport } from '@/lib/trend-types';
 
+const SUGGESTED = [
+  'gorpcore',
+  'balletcore',
+  'Y2K revival',
+  'coquette',
+  'blokecore',
+  'quiet luxury',
+  'cottagecore',
+];
+
 export function TrendRadar({ initialKeyword = '' }: { initialKeyword?: string }) {
   const [keyword, setKeyword] = useState(initialKeyword);
   const [loading, setLoading] = useState(false);
@@ -16,9 +26,10 @@ export function TrendRadar({ initialKeyword = '' }: { initialKeyword?: string })
   const [tracking, setTracking] = useState(false);
   const [tracked, setTracked] = useState(false);
 
-  async function analyze(e?: React.FormEvent) {
+  async function analyze(e?: React.FormEvent, override?: string) {
     e?.preventDefault();
-    if (!keyword.trim()) return;
+    const kw = (override ?? keyword).trim();
+    if (!kw) return;
     setLoading(true);
     setReport(null);
     setTracked(false);
@@ -26,7 +37,7 @@ export function TrendRadar({ initialKeyword = '' }: { initialKeyword?: string })
       const res = await fetch('/api/trends/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword }),
+        body: JSON.stringify({ keyword: kw }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Analysis failed');
@@ -36,6 +47,11 @@ export function TrendRadar({ initialKeyword = '' }: { initialKeyword?: string })
     } finally {
       setLoading(false);
     }
+  }
+
+  function searchFor(k: string) {
+    setKeyword(k);
+    void analyze(undefined, k);
   }
 
   async function track() {
@@ -79,6 +95,26 @@ export function TrendRadar({ initialKeyword = '' }: { initialKeyword?: string })
           Analyze
         </Button>
       </form>
+
+      {!report && !loading && (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Not sure where to start? Try one:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {SUGGESTED.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => searchFor(s)}
+                className="rounded-full border px-3 py-1 text-sm transition-colors hover:bg-muted"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {report && (
         <TrendReportView
