@@ -4,7 +4,11 @@ import { TrendRadar } from '@/components/Trends/TrendRadar';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TrendsPage() {
+export default async function TrendsPage({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -24,7 +28,7 @@ export default async function TrendsPage() {
         </p>
       </div>
 
-      <TrendRadar />
+      <TrendRadar initialKeyword={searchParams.q ?? ''} />
 
       {niches.length > 0 && (
         <div>

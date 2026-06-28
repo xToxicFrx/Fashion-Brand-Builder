@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Search } from 'lucide-react';
 
@@ -75,6 +75,13 @@ export function TrendRadar({ initialKeyword = '' }: { initialKeyword?: string })
       setTracking(false);
     }
   }
+
+  useEffect(() => {
+    if (initialKeyword.trim()) {
+      void analyze(undefined, initialKeyword);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-6">

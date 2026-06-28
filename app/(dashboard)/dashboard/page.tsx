@@ -103,7 +103,12 @@ export default async function DashboardPage() {
               </h3>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {watchlist.map((n) => (
-                  <Card key={n.id}>
+                  <Link
+                    key={n.id}
+                    href={`/trends?q=${encodeURIComponent(n.keyword)}`}
+                    className="block rounded-lg transition-colors hover:bg-muted/40"
+                  >
+                  <Card className="h-full">
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base">{n.keyword}</CardTitle>
@@ -132,6 +137,7 @@ export default async function DashboardPage() {
                       )}
                     </CardContent>
                   </Card>
+                  </Link>
                 ))}
               </div>
             </div>
