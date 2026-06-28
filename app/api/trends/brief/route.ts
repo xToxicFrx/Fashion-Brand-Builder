@@ -7,6 +7,7 @@ import {
   isOpenAIConfigured,
 } from '@/lib/openai';
 import { track } from '@/lib/analytics';
+import { checkQuota } from '@/lib/limits';
 
 const briefSchema = z.object({
   ideaTitle: z.string().trim().min(2).max(120),
@@ -34,6 +35,21 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
         { status: 400 },
+      );
+    }
+
+    const tier = user.subscriptionTier ?? 'free';
+    const quota = await checkQuota(user.id, tier, 'brief');
+    if (!quota.allowed) {
+      await track('paywall_hit', {
+        userId: user.id,
+        meta: { feature: 'brief', used: quota.used, limit: quota.limit },
+      });
+      return NextResponse.json(
+        {
+          error: `You've used all ${quota.limit} design briefs in your free plan this month. Your limit resets on the 1st.`,
+        },
+        { status: 429 },
       );
     }
 
