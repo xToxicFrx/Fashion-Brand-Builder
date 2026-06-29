@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       mode: 'subscription',
       customer: customerId,
       line_items: [{ price: plan.priceId, quantity: 1 }],
-      success_url: appUrl('/settings?upgraded=1'),
+      success_url: appUrl('/pricing?upgraded=1'),
       cancel_url: appUrl('/pricing'),
       metadata: { userId: user.id, plan: plan.id },
       subscription_data: { metadata: { userId: user.id, plan: plan.id } },
