@@ -7,6 +7,7 @@ import { persistImageFromBase64, persistImageFromUrl } from '@/lib/storage';
 import { track } from '@/lib/analytics';
 import { jsonError, logError } from '@/lib/api';
 import { checkQuota } from '@/lib/limits';
+import { getUserCategory } from '@/lib/category-server';
 
 const schema = z.object({ prompt: z.string().trim().min(3).max(1000) });
 
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
     // ~1-2h) or base64 data (gpt-image-1). Either way, copy it into Supabase
     // Storage so saved mockups stay valid; if Storage isn't configured the URL
     // form is returned unchanged and the base64 form becomes an inline data URL.
-    const image = await generateConceptImage(parsed.data.prompt);
+    const category = await getUserCategory(user.id);
+    const image = await generateConceptImage(parsed.data.prompt, category);
     const url =
       'url' in image
         ? await persistImageFromUrl(image.url, user.id)

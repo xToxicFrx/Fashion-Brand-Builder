@@ -69,6 +69,7 @@ model User {
   image            String?
   hashedPassword   String?
   role             String    @default("designer") // designer | brand | customer | admin
+  category         String    @default("fashion") // primary vertical: fashion | home | jewelry | pod | beauty
   subscriptionTier String    @default("free") // free | starter | pro
   stripeCustomerId String?
   bio              String?
@@ -306,6 +307,7 @@ model Notification {
 model OnboardingProfile {
   id        String   @id @default(cuid())
   userId    String   @unique
+  category  String? // chosen vertical: fashion | home | jewelry | pod | beauty
   niches    String? // JSON array of niche keywords
   style     String?
   goals     String? // JSON array of goals

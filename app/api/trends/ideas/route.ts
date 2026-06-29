@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getTrendReport } from '@/lib/trend-intelligence';
+import { getUserCategory } from '@/lib/category-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,9 +27,12 @@ export async function GET() {
     return NextResponse.json({ ideas: [] });
   }
 
+  const category = await getUserCategory(user.id);
   const reports = await Promise.all(
     niches.map((n) =>
-      getTrendReport(n.keyword, { includeIdeas: true }).catch(() => null),
+      getTrendReport(n.keyword, { includeIdeas: true, category }).catch(
+        () => null,
+      ),
     ),
   );
 

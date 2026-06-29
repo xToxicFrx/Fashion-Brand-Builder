@@ -8,6 +8,7 @@ import { Loader2, Plus, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CATEGORIES, getCategory, type CategoryId } from '@/lib/categories';
 
 const GOAL_OPTIONS = [
   'Find trends early',
@@ -19,6 +20,7 @@ const GOAL_OPTIONS = [
 
 export function OnboardingWizard() {
   const router = useRouter();
+  const [category, setCategory] = useState<CategoryId>('fashion');
   const [niches, setNiches] = useState<string[]>([]);
   const [nicheInput, setNicheInput] = useState('');
   const [style, setStyle] = useState('');
@@ -47,7 +49,7 @@ export function OnboardingWizard() {
       const res = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ niches, style, goals, brandName }),
+        body: JSON.stringify({ category, niches, style, goals, brandName }),
       });
       if (!res.ok) {
         const j = await res.json();
@@ -65,12 +67,48 @@ export function OnboardingWizard() {
 
   return (
     <div className="mx-auto max-w-xl space-y-8">
+      {/* Category */}
+      <section className="space-y-3">
+        <div>
+          <Label className="text-base">1. What do you make?</Label>
+          <p className="text-sm text-muted-foreground">
+            We tailor trend analysis, ideas, briefs, mockups and copy to your
+            craft.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {CATEGORIES.map((c) => {
+            const active = category === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategory(c.id)}
+                className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+                  active
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'hover:bg-muted'
+                }`}
+              >
+                <span className="text-2xl leading-none">{c.emoji}</span>
+                <span>
+                  <span className="block text-sm font-medium">{c.label}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {c.tagline}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Niches */}
       <section className="space-y-3">
         <div>
-          <Label className="text-base">1. What niches do you design for?</Label>
+          <Label className="text-base">2. What niches do you focus on?</Label>
           <p className="text-sm text-muted-foreground">
-            We&apos;ll track these and surface what to design next. Add up to 8.
+            We&apos;ll track these and surface what to make next. Add up to 8.
           </p>
         </div>
         <div className="flex gap-2">
@@ -83,7 +121,9 @@ export function OnboardingWizard() {
                 addNiche();
               }
             }}
-            placeholder="e.g. streetwear, Y2K, cottagecore…"
+            placeholder={`e.g. ${getCategory(category)
+              .examples.slice(0, 3)
+              .join(', ')}…`}
             maxLength={60}
           />
           <Button type="button" variant="outline" onClick={addNiche}>
@@ -113,7 +153,7 @@ export function OnboardingWizard() {
       {/* Style */}
       <section className="space-y-2">
         <Label htmlFor="style" className="text-base">
-          2. How would you describe your style? (optional)
+          3. How would you describe your style? (optional)
         </Label>
         <Input
           id="style"
@@ -126,7 +166,7 @@ export function OnboardingWizard() {
 
       {/* Goals */}
       <section className="space-y-2">
-        <Label className="text-base">3. What&apos;s your main goal?</Label>
+        <Label className="text-base">4. What&apos;s your main goal?</Label>
         <div className="flex flex-wrap gap-2">
           {GOAL_OPTIONS.map((g) => {
             const active = goals.includes(g);
@@ -152,7 +192,7 @@ export function OnboardingWizard() {
       {/* Brand */}
       <section className="space-y-2">
         <Label htmlFor="brand" className="text-base">
-          4. Brand name (optional)
+          5. Brand name (optional)
         </Label>
         <Input
           id="brand"

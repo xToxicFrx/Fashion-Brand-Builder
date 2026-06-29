@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 
+import { getCategory } from '@/lib/categories';
+
 /**
  * Lazily-instantiated OpenAI client. Throws a clear error when OPENAI_API_KEY is
  * missing so the rest of the app boots without it. Mirrors lib/claude.ts.
@@ -142,17 +144,26 @@ export async function generateTrendInsights(params: {
   risingQueries?: string[];
   hasRealData: boolean;
   includeIdeas?: boolean;
+  category?: string;
 }): Promise<TrendInsights> {
   const client = getOpenAI();
-  const { keyword, trendScore, momentum, risingQueries, hasRealData, includeIdeas } =
-    params;
+  const {
+    keyword,
+    trendScore,
+    momentum,
+    risingQueries,
+    hasRealData,
+    includeIdeas,
+    category,
+  } = params;
+  const cat = getCategory(category);
 
   const ideasInstruction = includeIdeas
-    ? '"designIdeas": array of exactly 3 DISTINCT objects {"title": string (the specific garment + concept, not generic), "description": string (max 160 chars: name the garment, the concrete graphic/visual concept, and why it fits this trend right now), "suggestedPrice": number (USD, realistic for the niche), "keyElements": string[] (2-4 concrete visual elements: motifs, colors, placement, technique)}'
+    ? `"designIdeas": array of exactly 3 DISTINCT objects {"title": string (${cat.ideaFocus}, not generic), "description": string (max 160 chars: name the ${cat.product}, the concrete concept, and why it fits this trend right now), "suggestedPrice": number (USD, realistic for the niche), "keyElements": string[] (2-4 concrete elements: ${cat.elements})}`
     : '"designIdeas": []';
 
   const system =
-    'You are a fashion trend analyst for an independent-designer platform. ' +
+    `You are a ${cat.analyst}. ` +
     'Be specific, current and commercially useful: prefer concrete, production-ready ideas a small brand could actually make and sell over generic advice. ' +
     'When real data is provided, ground the score and rationale in it; otherwise estimate conservatively and keep numbers plausible. ' +
     'Respond with a single strict JSON object only — no prose, no markdown. ' +
@@ -170,9 +181,9 @@ export async function generateTrendInsights(params: {
       }. Base your rationale on these real numbers.`
     : 'No live data is available; estimate from your own knowledge and keep numbers plausible.';
 
-  const userPrompt = `Analyze the fashion niche/keyword "${keyword}" for an independent apparel designer. ${dataContext} Provide demand level, a recommended USD retail price, the specific core audience, a sharp rationale, related keywords${
+  const userPrompt = `Analyze the ${cat.product} niche/keyword "${keyword}" for an ${cat.maker}. ${dataContext} Provide demand level, a recommended USD retail price, the specific core audience, a sharp rationale, related keywords${
     includeIdeas
-      ? ', and exactly 3 distinct, production-ready design ideas — each naming the garment, a specific graphic/visual concept, 2-4 key visual elements and a realistic price'
+      ? `, and exactly 3 distinct, production-ready ideas — each naming ${cat.ideaFocus}, 2-4 key elements (${cat.elements}) and a realistic price`
       : ''
   }. Respond with JSON only.`;
 
@@ -198,7 +209,7 @@ export async function generateTrendInsights(params: {
       audience:
         typeof parsed.audience === 'string'
           ? parsed.audience.slice(0, 160)
-          : 'Independent fashion shoppers',
+          : cat.audience,
       rationale:
         typeof parsed.rationale === 'string'
           ? parsed.rationale.slice(0, 300)
@@ -246,20 +257,22 @@ export async function generateDesignBrief(params: {
   ideaTitle: string;
   keyword: string;
   description?: string;
+  category?: string;
 }): Promise<DesignBrief> {
   const client = getOpenAI();
-  const { ideaTitle, keyword, description } = params;
+  const { ideaTitle, keyword, description, category } = params;
+  const cat = getCategory(category);
 
   const system =
-    'You are an apparel design director briefing a small brand. Be concrete and production-ready — every field should be something a designer can act on immediately. ' +
+    `You are a ${cat.designDirector}. Be concrete and production-ready — every field should be something a maker can act on immediately. ` +
     'Respond with a single strict JSON object only — no prose, no markdown. ' +
-    'Schema: {"concept": string (max 280 chars, the garment + the visual story), "palette": array of 3-5 {"name": string, "hex": string (#RRGGBB)}, ' +
+    `Schema: {"concept": string (max 280 chars, the ${cat.product} + the visual story), "palette": array of 3-5 {"name": string, "hex": string (#RRGGBB)}, ` +
     '"keyElements": string[] (3-6 concrete design elements), "typography": string (max 80 chars, a real font style/pairing), "audience": string (max 120 chars, the specific buyer), ' +
-    '"suggestedPrice": number (USD), "mockupPrompt": string (a vivid, specific prompt to generate a photorealistic product mockup image: garment, colors, graphic placement, style — max 320 chars)}.';
+    `"suggestedPrice": number (USD), "mockupPrompt": string (a vivid, specific prompt to generate a photorealistic product mockup image: the ${cat.product}, colors, key details, style — max 320 chars)}.`;
 
-  const userPrompt = `Create a concrete, production-ready design brief for the apparel idea "${ideaTitle}" in the "${keyword}" niche${
+  const userPrompt = `Create a concrete, production-ready design brief for the ${cat.product} idea "${ideaTitle}" in the "${keyword}" niche${
     description ? ` (${description})` : ''
-  }. Be specific: real colors, real placement, a buyer a small brand can target. Respond with JSON only.`;
+  }. Be specific: real colors, real details, a buyer a small brand can target. Respond with JSON only.`;
 
   try {
     const completion = await client.chat.completions.create({
@@ -325,12 +338,14 @@ export async function generateListingCopy(params: {
   keyword: string;
   productTitle?: string;
   description?: string;
+  category?: string;
 }): Promise<ListingCopy> {
   const client = getOpenAI();
-  const { keyword, productTitle, description } = params;
+  const { keyword, productTitle, description, category } = params;
+  const cat = getCategory(category);
 
   const system =
-    'You are a fashion e-commerce copywriter. Respond with a single strict JSON object only — no prose, no markdown. ' +
+    `You are a ${cat.copywriter}. Respond with a single strict JSON object only — no prose, no markdown. ` +
     'Schema: {"titles": string[] (5 catchy product titles, max 70 chars each), ' +
     '"description": string (a compelling product description, 50-120 words), ' +
     '"seoTags": string[] (8 lowercase SEO/search tags), ' +
@@ -338,7 +353,7 @@ export async function generateListingCopy(params: {
 
   const subject = productTitle
     ? `the product "${productTitle}" in the "${keyword}" niche`
-    : `a product in the "${keyword}" fashion niche`;
+    : `a ${cat.product} in the "${keyword}" niche`;
   const userPrompt = `Write marketing copy for ${subject}${
     description ? ` (${description})` : ''
   }. Make it punchy and conversion-focused. Respond with JSON only.`;
@@ -408,19 +423,17 @@ function isModelUnavailable(error: unknown): boolean {
  */
 export async function generateConceptImage(
   prompt: string,
+  category?: string,
 ): Promise<GeneratedImage> {
   const client = getOpenAI();
+  const cat = getCategory(category);
   // Preferred model (if configured) is tried first, then the rest of the chain.
   const preferred = process.env.OPENAI_IMAGE_MODEL;
   const defaults = ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
   const models = preferred
     ? [preferred, ...defaults.filter((m) => m !== preferred)]
     : defaults;
-  const fullPrompt =
-    `Apparel product mockup, e-commerce catalog style, clean studio background, photorealistic. ${prompt}`.slice(
-      0,
-      1000,
-    );
+  const fullPrompt = `${cat.mockupPrefix} ${prompt}`.slice(0, 1000);
 
   const attempts: string[] = [];
   let firstError: unknown;

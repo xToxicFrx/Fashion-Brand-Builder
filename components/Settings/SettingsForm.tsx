@@ -17,16 +17,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { USER_ROLES } from '@/lib/validations';
+import { CATEGORIES, type CategoryId } from '@/lib/categories';
 
 export function SettingsForm({
   initial,
 }: {
-  initial: { name: string; bio: string; role: string };
+  initial: { name: string; bio: string; role: string; category: string };
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
   const [bio, setBio] = useState(initial.bio);
   const [role, setRole] = useState(initial.role);
+  const [category, setCategory] = useState<CategoryId>(
+    (initial.category as CategoryId) || 'fashion',
+  );
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,7 +40,7 @@ export function SettingsForm({
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, bio: bio || null, role }),
+        body: JSON.stringify({ name, bio: bio || null, role, category }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Failed to update profile');
@@ -82,6 +86,27 @@ export function SettingsForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>What you make</Label>
+        <Select
+          value={category}
+          onValueChange={(v) => setCategory(v as CategoryId)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIES.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.emoji} {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Tailors trend analysis, ideas, briefs, mockups and copy to your craft.
+        </p>
       </div>
       <Button type="submit" disabled={saving}>
         {saving && <Loader2 className="animate-spin" />} Save changes

@@ -54,6 +54,7 @@ export default async function SettingsPage() {
                 name: user.name ?? '',
                 bio: user.bio ?? '',
                 role: user.role,
+                category: user.category,
               }}
             />
           </CardContent>

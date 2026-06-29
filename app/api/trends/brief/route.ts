@@ -8,6 +8,7 @@ import {
 } from '@/lib/openai';
 import { track } from '@/lib/analytics';
 import { checkQuota } from '@/lib/limits';
+import { getUserCategory } from '@/lib/category-server';
 
 const briefSchema = z.object({
   ideaTitle: z.string().trim().min(2).max(120),
@@ -52,7 +53,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const brief = await generateDesignBrief(parsed.data);
+    const category = await getUserCategory(user.id);
+    const brief = await generateDesignBrief({ ...parsed.data, category });
     await track('brief_generated', {
       userId: user.id,
       keyword: parsed.data.keyword,

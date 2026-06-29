@@ -29,6 +29,7 @@ export async function PATCH(request: Request) {
         ...(data.bio !== undefined ? { bio: data.bio ?? null } : {}),
         ...(data.role !== undefined ? { role: data.role } : {}),
         ...(data.image !== undefined ? { image: data.image ?? null } : {}),
+        ...(data.category !== undefined ? { category: data.category } : {}),
       },
     });
 
