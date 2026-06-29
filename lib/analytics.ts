@@ -12,6 +12,7 @@ export type EventType =
   | 'idea_saved'
   | 'brief_generated'
   | 'mockup_generated'
+  | 'copy_generated'
   | 'paywall_hit'
   | 'checkout_started'
   | 'subscribed';

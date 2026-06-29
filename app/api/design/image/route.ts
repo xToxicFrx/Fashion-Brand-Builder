@@ -51,9 +51,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ url });
   } catch (error) {
     logError('api/design/image', error);
-    return jsonError(
-      error instanceof Error ? error.message : 'Image generation failed.',
-      502,
-    );
+    return jsonError('Image generation failed. Please try again.', 502);
   }
 }
