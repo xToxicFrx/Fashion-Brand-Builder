@@ -364,3 +364,13 @@ model ReportCache {
 
   @@index([updatedAt])
 }
+
+// Durable, DB-backed rate-limit hits (no Redis needed). One row per allowed
+// action; rateLimit() counts a key's recent rows and prunes expired ones.
+model RateHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

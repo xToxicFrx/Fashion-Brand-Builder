@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { teaserSchema } from '@/lib/validations';
 import { getTrendReport } from '@/lib/trend-intelligence';
+import { rateLimit, clientIp } from '@/lib/ratelimit';
 
 /**
  * Public trend teaser for the landing page. NOT authenticated, so it has basic,
@@ -10,16 +11,6 @@ import { getTrendReport } from '@/lib/trend-intelligence';
  */
 const RATE_LIMIT = 6; // requests
 const RATE_WINDOW_MS = 60_000; // per minute, per IP
-
-const hits = new Map<string, number[]>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  return recent.length > RATE_LIMIT;
-}
 
 export async function POST(request: Request) {
   try {
@@ -32,10 +23,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      'unknown';
-    if (isRateLimited(ip)) {
+    const ip = clientIp(request);
+    if (!(await rateLimit(`teaser:${ip}`, RATE_LIMIT, RATE_WINDOW_MS))) {
       return NextResponse.json(
         { error: 'Too many requests — please wait a minute and try again.' },
         { status: 429 },

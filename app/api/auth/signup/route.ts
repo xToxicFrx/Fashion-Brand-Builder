@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { signupSchema } from '@/lib/validations';
 import { track } from '@/lib/analytics';
+import { rateLimit, clientIp } from '@/lib/ratelimit';
 
 /** Create a new user with a hashed password (Credentials-provider sign-up). */
 export async function POST(request: Request) {
@@ -18,6 +19,13 @@ export async function POST(request: Request) {
     }
 
     const { name, email, password, role } = parsed.data;
+
+    if (!(await rateLimit(`signup:${clientIp(request)}`, 10, 60 * 60 * 1000))) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Please try again later.' },
+        { status: 429 },
+      );
+    }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {

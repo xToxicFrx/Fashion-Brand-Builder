@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 
 import { prisma } from '@/lib/db';
 import { loginSchema } from '@/lib/validations';
+import { rateLimit } from '@/lib/ratelimit';
 
 /**
  * Build the provider list. Google is only enabled when its credentials are
@@ -36,6 +37,15 @@ function buildProviders(): Provider[] {
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
+
+        // Throttle brute force / credential stuffing per email (the request IP
+        // isn't reliably available inside authorize).
+        const ok = await rateLimit(
+          `login:${parsed.data.email.toLowerCase()}`,
+          10,
+          15 * 60 * 1000,
+        );
+        if (!ok) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: parsed.data.email },
