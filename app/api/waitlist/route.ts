@@ -21,12 +21,12 @@ export async function POST(request: Request) {
 
     const { email, sellsOn, source } = parsed.data;
 
-    const existing = await prisma.waitlistSignup.findUnique({ where: { email } });
-    if (existing) {
-      return NextResponse.json({ ok: true, alreadyJoined: true });
-    }
-
-    await prisma.waitlistSignup.create({ data: { email, sellsOn, source } });
+    // Always respond the same way — never reveal whether an email is already on
+    // the list (avoids enumeration). The unique constraint dedupes; ignore the
+    // duplicate-key error.
+    await prisma.waitlistSignup
+      .create({ data: { email, sellsOn, source } })
+      .catch(() => {});
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('[api/waitlist]', error);
