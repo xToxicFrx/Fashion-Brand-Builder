@@ -129,6 +129,32 @@ export function TrendReportView({
           {report.rationale && (
             <p className="text-sm text-muted-foreground">{report.rationale}</p>
           )}
+          {report.scoreBreakdown && report.scoreBreakdown.length > 0 && (
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="mb-3 text-sm font-medium">
+                How this score is calculated
+              </p>
+              <div className="space-y-3">
+                {report.scoreBreakdown.map((s) => (
+                  <div key={s.key} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-medium">{s.label}</span>
+                      <span className="text-muted-foreground tabular-nums">
+                        {s.score}/100 · {Math.round(s.weight * 100)}% weight
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${s.score}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{s.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             {report.risingQueries && report.risingQueries.length > 0 && (
               <div>
