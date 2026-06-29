@@ -1,6 +1,8 @@
 // Shared, dependency-free types for the trend UI (safe to import in client
 // components — no server-only deps).
 
+import type { CategoryId } from '@/lib/categories';
+
 export type Momentum = 'trending_up' | 'peak' | 'declining';
 
 export interface RegionInterest {
@@ -44,6 +46,7 @@ export interface DesignBrief {
 
 export interface TrendReport {
   keyword: string;
+  category?: CategoryId;
   dataSource: 'google_trends' | 'ai_estimate';
   trendScore: number;
   momentum: Momentum;

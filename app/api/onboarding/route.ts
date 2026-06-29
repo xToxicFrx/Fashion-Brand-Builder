@@ -9,6 +9,7 @@ import {
   getTrendReport,
   persistReportArtifacts,
 } from '@/lib/trend-intelligence';
+import { CATEGORY_IDS } from '@/lib/categories';
 
 /** Get the current user's onboarding profile (or null). */
 export async function GET() {
@@ -23,6 +24,7 @@ export async function GET() {
 }
 
 const schema = z.object({
+  category: z.enum(CATEGORY_IDS).optional(),
   niches: z.array(z.string().trim().min(1).max(60)).max(8).default([]),
   style: z.string().max(120).optional(),
   goals: z.array(z.string().max(60)).max(8).default([]),
@@ -43,11 +45,12 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const { niches, style, goals, brandName } = parsed.data;
+  const { category, niches, style, goals, brandName } = parsed.data;
 
   await prisma.onboardingProfile.upsert({
     where: { userId: user.id },
     update: {
+      category: category ?? null,
       niches: stringifyJson(niches),
       style: style ?? null,
       goals: stringifyJson(goals),
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
     },
     create: {
       userId: user.id,
+      category: category ?? null,
       niches: stringifyJson(niches),
       style: style ?? null,
       goals: stringifyJson(goals),
@@ -63,6 +67,13 @@ export async function POST(request: Request) {
       completed: true,
     },
   });
+
+  // Persist the chosen vertical on the user so the whole AI engine adapts to it.
+  if (category) {
+    await prisma.user
+      .update({ where: { id: user.id }, data: { category } })
+      .catch(() => {});
+  }
 
   // Auto-track the chosen niches so the dashboard has data immediately.
   for (const keyword of niches.slice(0, 8)) {
@@ -80,7 +91,10 @@ export async function POST(request: Request) {
   const firstNiche = niches[0];
   if (firstNiche) {
     try {
-      const report = await getTrendReport(firstNiche, { includeIdeas: true });
+      const report = await getTrendReport(firstNiche, {
+        includeIdeas: true,
+        category,
+      });
       await persistReportArtifacts(user.id, report);
     } catch (e) {
       console.error('[api/onboarding] seed first niche failed', e);

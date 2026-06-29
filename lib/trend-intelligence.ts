@@ -13,11 +13,14 @@ import {
 import { prisma } from '@/lib/db';
 import { stringifyJson } from '@/lib/json';
 import type { ScoreSignal } from '@/lib/trend-types';
+import { getCategory, type CategoryId } from '@/lib/categories';
 
 export type Momentum = 'trending_up' | 'peak' | 'declining';
 
 export interface TrendReport {
   keyword: string;
+  /** The vertical this report was generated for (steers the AI + ideas). */
+  category: CategoryId;
   /** Where the numbers come from — shown to the user as a transparency badge. */
   dataSource: 'google_trends' | 'ai_estimate';
   trendScore: number; // 0-100
@@ -178,10 +181,11 @@ function computeMultiSignalScore(input: {
  */
 export async function getTrendReport(
   keyword: string,
-  opts: { includeIdeas?: boolean; geo?: string } = {},
+  opts: { includeIdeas?: boolean; geo?: string; category?: string } = {},
 ): Promise<TrendReport> {
   const trimmed = keyword.trim();
-  const cacheKey = `${trimmed.toLowerCase()}|${opts.includeIdeas ? 'ideas' : 'basic'}|${opts.geo ?? ''}`;
+  const categoryId = getCategory(opts.category).id;
+  const cacheKey = `${trimmed.toLowerCase()}|${opts.includeIdeas ? 'ideas' : 'basic'}|${opts.geo ?? ''}|${categoryId}`;
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.report;
 
@@ -235,6 +239,7 @@ export async function getTrendReport(
         risingQueries,
         hasRealData: dataSource === 'google_trends',
         includeIdeas: opts.includeIdeas ?? false,
+        category: categoryId,
       });
     } catch {
       insights = undefined;
@@ -243,6 +248,7 @@ export async function getTrendReport(
 
   const report: TrendReport = {
     keyword: trimmed,
+    category: categoryId,
     dataSource,
     trendScore:
       realScore ??

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { CATEGORY_IDS } from '@/lib/categories';
+
 /**
  * Centralized Zod schemas and the canonical lists of allowed values for our
  * "enum-like" String columns (SQLite has no native enums). API routes and forms
@@ -199,6 +201,7 @@ export const profileUpdateSchema = z.object({
   bio: z.string().max(500).optional().nullable(),
   role: z.enum(USER_ROLES).optional(),
   image: z.string().optional().nullable(),
+  category: z.enum(CATEGORY_IDS).optional(),
 });
 
 // --- Inferred types ---------------------------------------------------------

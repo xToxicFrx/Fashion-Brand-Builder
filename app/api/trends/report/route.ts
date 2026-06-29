@@ -9,6 +9,7 @@ import {
 import { track } from '@/lib/analytics';
 import { jsonError, logError } from '@/lib/api';
 import { checkQuota } from '@/lib/limits';
+import { getUserCategory } from '@/lib/category-server';
 
 /**
  * Full trend report for a logged-in user (includes AI design ideas) and saves a
@@ -39,8 +40,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const category = await getUserCategory(user.id);
     const report = await getTrendReport(parsed.data.keyword, {
       includeIdeas: true,
+      category,
     });
 
     // Persist history artifacts (snapshot + saved report) — best-effort.

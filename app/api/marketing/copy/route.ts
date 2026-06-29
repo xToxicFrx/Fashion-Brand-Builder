@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { generateListingCopy, isOpenAIConfigured } from '@/lib/openai';
 import { checkQuota } from '@/lib/limits';
 import { track } from '@/lib/analytics';
+import { getUserCategory } from '@/lib/category-server';
 
 const schema = z.object({
   keyword: z.string().trim().min(2).max(60),
@@ -47,7 +48,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const copy = await generateListingCopy(parsed.data);
+    const category = await getUserCategory(user.id);
+    const copy = await generateListingCopy({ ...parsed.data, category });
     await track('copy_generated', {
       userId: user.id,
       keyword: parsed.data.keyword,
