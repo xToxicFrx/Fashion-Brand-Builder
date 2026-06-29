@@ -102,6 +102,17 @@ export async function persistImageFromUrl(
 ): Promise<string> {
   if (!isSupabaseStorageConfigured()) return sourceUrl;
   try {
+    // SSRF guard: only server-fetch external https URLs — never internal,
+    // loopback or cloud-metadata targets. (Source is normally an OpenAI URL.)
+    const host = new URL(sourceUrl).hostname;
+    const internal =
+      /^(localhost|0\.0\.0\.0|169\.254\.|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/.test(
+        host,
+      );
+    if (!sourceUrl.startsWith('https://') || internal) {
+      console.error('[storage] refused to fetch non-https/internal URL');
+      return sourceUrl;
+    }
     const imgRes = await fetch(sourceUrl);
     if (!imgRes.ok) {
       throw new Error(`Failed to download source image: ${imgRes.status}`);

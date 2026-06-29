@@ -26,7 +26,7 @@ const saveSchema = z.object({
   description: z.string().max(400).optional(),
   suggestedPrice: z.number().optional(),
   brief: z.unknown().optional(),
-  imageUrl: z.string().url().max(2000).optional(),
+  imageUrl: z.string().url().startsWith('https://').max(2000).optional(),
 });
 
 /** Save a design idea (optionally with a generated brief). */

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { prisma } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 
 // Always read fresh from the DB; never statically cache the metrics.
 export const dynamic = 'force-dynamic';
@@ -26,18 +27,15 @@ async function activeSince(since: Date): Promise<number> {
 }
 
 /**
- * Private product-metrics dashboard. Guarded by a shared secret like the
- * waitlist page: set `ADMIN_TOKEN` and open `/admin/metrics?token=<value>`.
- * Wrong/missing token 404s. Shows the activation funnel (distinct users per
- * step), DAU/WAU and a recent-event feed from the `Event` model.
+ * Private product-metrics dashboard. Restricted to users with role "admin"
+ * (404s otherwise, hiding its existence). Grant yourself admin once in the DB:
+ *   UPDATE "User" SET role = 'admin' WHERE email = 'you@example.com';
+ * Shows the activation funnel (distinct users per step), DAU/WAU and a
+ * recent-event feed from the `Event` model.
  */
-export default async function MetricsAdminPage({
-  searchParams,
-}: {
-  searchParams: { token?: string };
-}) {
-  const expected = process.env.ADMIN_TOKEN;
-  if (!expected || searchParams.token !== expected) {
+export default async function MetricsAdminPage() {
+  const user = await getCurrentUser();
+  if (user?.role !== 'admin') {
     notFound();
   }
 

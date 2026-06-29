@@ -1,22 +1,19 @@
 import { notFound } from 'next/navigation';
 
 import { prisma } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 
 // Always read fresh from the DB; never statically cache the count.
 export const dynamic = 'force-dynamic';
 
 /**
- * Minimal private waitlist dashboard. Guarded by a shared secret: set
- * `ADMIN_TOKEN` in the environment and open `/admin/waitlist?token=<value>`.
- * If the token is missing or wrong, the page 404s (hides its existence).
+ * Minimal private waitlist dashboard. Restricted to users with role "admin"
+ * (404s otherwise, hiding its existence). Grant admin once in the DB:
+ *   UPDATE "User" SET role = 'admin' WHERE email = 'you@example.com';
  */
-export default async function WaitlistAdminPage({
-  searchParams,
-}: {
-  searchParams: { token?: string };
-}) {
-  const expected = process.env.ADMIN_TOKEN;
-  if (!expected || searchParams.token !== expected) {
+export default async function WaitlistAdminPage() {
+  const user = await getCurrentUser();
+  if (user?.role !== 'admin') {
     notFound();
   }
 
