@@ -26,15 +26,14 @@ export async function POST(request: Request) {
       return jsonError(parsed.error.issues[0]?.message ?? 'Invalid input', 400);
     }
 
-    const tier = user.subscriptionTier ?? 'free';
-    const quota = await checkQuota(user.id, tier, 'mockup');
+    const quota = await checkQuota(user.id, 'mockup');
     if (!quota.allowed) {
       await track('paywall_hit', {
         userId: user.id,
         meta: { feature: 'mockup', used: quota.used, limit: quota.limit },
       });
       return jsonError(
-        `You've used all ${quota.limit} mockups in your free plan this month. Your limit resets on the 1st.`,
+        `You've used all ${quota.limit} mockups this month — upgrade at /pricing for more, or wait until the 1st.`,
         429,
       );
     }

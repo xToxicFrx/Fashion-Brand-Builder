@@ -38,8 +38,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const tier = user.subscriptionTier ?? 'free';
-    const quota = await checkQuota(user.id, tier, 'brief');
+    const quota = await checkQuota(user.id, 'brief');
     if (!quota.allowed) {
       await track('paywall_hit', {
         userId: user.id,
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json(
         {
-          error: `You've used all ${quota.limit} design briefs in your free plan this month. Your limit resets on the 1st.`,
+          error: `You've used all ${quota.limit} design briefs this month — upgrade at /pricing for more, or wait until the 1st.`,
         },
         { status: 429 },
       );

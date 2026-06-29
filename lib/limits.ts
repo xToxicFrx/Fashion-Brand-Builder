@@ -45,26 +45,32 @@ export interface QuotaStatus {
 }
 
 /**
- * Check a user's usage of a feature against their tier's monthly limit, counting
- * this calendar month's events. Fails OPEN (allowed) on any error so a metering
- * glitch never blocks a real user — cost protection shouldn't break the app.
+ * Check a user's usage of a feature against their tier's monthly limit. Reads
+ * the subscription tier straight from the DB (authoritative — the Stripe webhook
+ * keeps it current), so an upgrade/cancel takes effect immediately without a
+ * re-login. Counts this calendar month's events. Fails OPEN on any error so a
+ * metering glitch never blocks a real user.
  */
 export async function checkQuota(
   userId: string,
-  tier: string,
   feature: Feature,
 ): Promise<QuotaStatus> {
-  const limit = monthlyLimit(tier, feature);
-  if (!Number.isFinite(limit)) return { allowed: true, used: 0, limit };
   try {
     const start = new Date();
     start.setDate(1);
     start.setHours(0, 0, 0, 0);
-    const used = await prisma.event.count({
-      where: { userId, type: EVENT_TYPE[feature], createdAt: { gte: start } },
-    });
+    const [dbUser, used] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { subscriptionTier: true },
+      }),
+      prisma.event.count({
+        where: { userId, type: EVENT_TYPE[feature], createdAt: { gte: start } },
+      }),
+    ]);
+    const limit = monthlyLimit(dbUser?.subscriptionTier ?? 'free', feature);
     return { allowed: used < limit, used, limit };
   } catch {
-    return { allowed: true, used: 0, limit };
+    return { allowed: true, used: 0, limit: Number.POSITIVE_INFINITY };
   }
 }

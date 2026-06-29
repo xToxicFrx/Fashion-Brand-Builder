@@ -38,6 +38,10 @@ export async function POST(request: Request) {
         const userId = s.metadata?.userId;
         const plan = s.metadata?.plan;
         if (userId && plan) {
+          const before = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { subscriptionTier: true },
+          });
           await prisma.user.update({
             where: { id: userId },
             data: {
@@ -47,7 +51,10 @@ export async function POST(request: Request) {
                 : {}),
             },
           });
-          await track('subscribed', { userId, meta: { plan } });
+          // Count a new subscription only once — Stripe may retry the event.
+          if (before?.subscriptionTier !== plan) {
+            await track('subscribed', { userId, meta: { plan } });
+          }
         }
         break;
       }
