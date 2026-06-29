@@ -12,6 +12,7 @@ import {
 } from '@/lib/openai';
 import { prisma } from '@/lib/db';
 import { stringifyJson } from '@/lib/json';
+import type { ScoreSignal } from '@/lib/trend-types';
 
 export type Momentum = 'trending_up' | 'peak' | 'declining';
 
@@ -29,6 +30,8 @@ export interface TrendReport {
   designIdeas: DesignIdea[];
   audience: string;
   rationale: string;
+  /** Per-signal breakdown of trendScore (present for live Google Trends data). */
+  scoreBreakdown?: ScoreSignal[];
   generatedAt: string;
 }
 
@@ -72,6 +75,100 @@ function deriveScoreFromLabel(label: 'low' | 'medium' | 'high'): number {
   return label === 'high' ? 82 : label === 'low' ? 35 : 60;
 }
 
+const mean = (xs: number[]) =>
+  xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0;
+const clamp100 = (n: number) => Math.min(100, Math.max(0, Math.round(n)));
+
+/**
+ * Composite trend score (B2): blends several independent signals into one
+ * 0-100 number with transparent, per-signal weighting, so the user sees *why* a
+ * niche scores the way it does instead of a single opaque interest figure. All
+ * signals come from data we already fetch — no extra API keys:
+ *  - interest:  current + 90-day-average search interest (baseline demand)
+ *  - momentum:  the recent window vs. the one before it (is it accelerating?)
+ *  - expansion: how many rising related searches it spawns (breadth)
+ *  - reach:     how many countries show real interest (market size)
+ * Interest and momentum always apply (from the timeline); expansion and reach
+ * are best-effort signals, only weighed in when present and the weights are
+ * renormalized — so a failed/empty related-queries or regions fetch never
+ * unfairly drags the score down. Returns null when the timeline is too thin.
+ */
+function computeMultiSignalScore(input: {
+  timeline: TrendTimelinePoint[];
+  risingQueries: string[];
+  regions: RegionInterest[];
+}): { score: number; signals: ScoreSignal[] } | null {
+  const values = input.timeline.map((p) => p.value);
+  if (values.length < 4) return null;
+
+  const average = mean(values);
+  const latest = values[values.length - 1] ?? 0;
+  const interest = clamp100(latest * 0.6 + average * 0.4);
+
+  // Momentum: recent quarter of the series vs. the quarter before it.
+  const window = Math.max(2, Math.floor(values.length / 4));
+  const recentAvg = mean(values.slice(-window));
+  const earlierAvg = mean(values.slice(-window * 2, -window)) || 1;
+  const momentum = clamp100(50 + (recentAvg / earlierAvg - 1) * 120);
+
+  // Expansion / reach: we cap the upstream fetches at 8 / 6 respectively.
+  const expansion = clamp100((input.risingQueries.length / 8) * 100);
+  const reach = clamp100((input.regions.length / 6) * 100);
+
+  const candidates: Array<ScoreSignal & { include: boolean }> = [
+    {
+      key: 'interest',
+      label: 'Search interest',
+      score: interest,
+      weight: 0.4,
+      include: true,
+      detail: 'Current and 90-day-average search interest.',
+    },
+    {
+      key: 'momentum',
+      label: 'Momentum',
+      score: momentum,
+      weight: 0.3,
+      include: true,
+      detail:
+        recentAvg >= earlierAvg
+          ? 'Interest is accelerating vs. the previous period.'
+          : 'Interest is cooling vs. the previous period.',
+    },
+    {
+      key: 'expansion',
+      label: 'Rising queries',
+      score: expansion,
+      weight: 0.15,
+      include: input.risingQueries.length > 0,
+      detail: `${input.risingQueries.length} related search${
+        input.risingQueries.length === 1 ? '' : 'es'
+      } gaining traction.`,
+    },
+    {
+      key: 'reach',
+      label: 'Geographic reach',
+      score: reach,
+      weight: 0.15,
+      include: input.regions.length > 0,
+      detail: `${input.regions.length} ${
+        input.regions.length === 1 ? 'country' : 'countries'
+      } showing real interest.`,
+    },
+  ];
+
+  const active = candidates.filter((s) => s.include);
+  const totalWeight = active.reduce((s, sig) => s + sig.weight, 0) || 1;
+  const signals: ScoreSignal[] = active.map(({ include: _omit, ...sig }) => ({
+    ...sig,
+    weight: Math.round((sig.weight / totalWeight) * 100) / 100,
+  }));
+  const score = clamp100(
+    active.reduce((s, sig) => s + sig.score * (sig.weight / totalWeight), 0),
+  );
+  return { score, signals };
+}
+
 /**
  * Build a trend report by combining REAL Google Trends data (when reachable)
  * with an OpenAI interpretation. Degrades gracefully:
@@ -101,6 +198,7 @@ export async function getTrendReport(
   let regions: RegionInterest[] = [];
   let realScore: number | undefined;
   let realMomentum: Momentum | undefined;
+  let scoreBreakdown: ScoreSignal[] | undefined;
 
   // 1) Real data (best-effort).
   try {
@@ -115,6 +213,13 @@ export async function getTrendReport(
     ]);
     risingQueries = related;
     regions = regs;
+    // B2: composite multi-signal score with a transparent breakdown. Falls
+    // back to the single-signal interest score when the timeline is too thin.
+    const ms = computeMultiSignalScore({ timeline, risingQueries, regions });
+    if (ms) {
+      realScore = ms.score;
+      scoreBreakdown = ms.signals;
+    }
   } catch {
     dataSource = 'ai_estimate';
   }
@@ -157,6 +262,7 @@ export async function getTrendReport(
       (dataSource === 'google_trends'
         ? 'Based on Google Trends interest over the last 90 days.'
         : 'Live data and AI are limited right now — showing a basic estimate.'),
+    scoreBreakdown,
     generatedAt: new Date().toISOString(),
   };
 
