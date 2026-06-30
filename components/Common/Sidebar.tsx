@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   TrendingUp,
+  Telescope,
   Library,
   Layers,
   Calculator,
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/trends', label: 'Trend Radar', icon: TrendingUp },
+  { href: '/opportunities', label: 'Opportunities', icon: Telescope },
   { href: '/library', label: 'Library', icon: Library },
   { href: '/collections', label: 'Collections', icon: Layers },
   { href: '/pricing', label: 'Pricing', icon: Calculator },

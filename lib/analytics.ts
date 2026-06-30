@@ -13,6 +13,7 @@ export type EventType =
   | 'brief_generated'
   | 'mockup_generated'
   | 'copy_generated'
+  | 'opportunity_generated'
   | 'paywall_hit'
   | 'checkout_started'
   | 'subscribed';
