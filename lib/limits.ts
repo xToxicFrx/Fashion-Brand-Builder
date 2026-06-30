@@ -8,7 +8,7 @@ import { prisma } from '@/lib/db';
  */
 
 /** Metered AI features. */
-export type Feature = 'report' | 'brief' | 'mockup' | 'copy';
+export type Feature = 'report' | 'brief' | 'mockup' | 'copy' | 'opportunity';
 
 /** The analytics Event type recorded for each feature (see lib/analytics.ts). */
 const EVENT_TYPE: Record<Feature, string> = {
@@ -16,6 +16,7 @@ const EVENT_TYPE: Record<Feature, string> = {
   brief: 'brief_generated',
   mockup: 'mockup_generated',
   copy: 'copy_generated',
+  opportunity: 'opportunity_generated',
 };
 
 /**
@@ -24,13 +25,14 @@ const EVENT_TYPE: Record<Feature, string> = {
  * Stripe is wired.
  */
 const LIMITS: Record<string, Record<Feature, number>> = {
-  free: { report: 25, brief: 25, mockup: 10, copy: 25 },
-  starter: { report: 300, brief: 300, mockup: 150, copy: 300 },
+  free: { report: 25, brief: 25, mockup: 10, copy: 25, opportunity: 10 },
+  starter: { report: 300, brief: 300, mockup: 150, copy: 300, opportunity: 100 },
   pro: {
     report: Number.POSITIVE_INFINITY,
     brief: Number.POSITIVE_INFINITY,
     mockup: Number.POSITIVE_INFINITY,
     copy: Number.POSITIVE_INFINITY,
+    opportunity: Number.POSITIVE_INFINITY,
   },
 };
 

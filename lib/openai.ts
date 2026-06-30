@@ -467,3 +467,82 @@ export async function generateConceptImage(
     ? firstError
     : new Error('Image generation failed.');
 }
+
+export interface RawOpportunity {
+  title: string;
+  keyword: string;
+  angle: string;
+  audience: string;
+  demand: 'low' | 'medium' | 'high';
+  competition: 'low' | 'medium' | 'high';
+  suggestedPrice: number;
+}
+
+/**
+ * Brainstorm concrete, specific PRODUCT OPPORTUNITIES for a category — the raw
+ * material the Opportunity Finder (lib/opportunity.ts) scores and ranks. Returns
+ * up to `count` candidates tailored to the maker's vertical.
+ *
+ * @throws if OpenAI is not configured or the response cannot be parsed.
+ */
+export async function generateOpportunityIdeas(params: {
+  category?: string;
+  seed?: string;
+  count?: number;
+}): Promise<RawOpportunity[]> {
+  const client = getOpenAI();
+  const cat = getCategory(params.category);
+  const count = clamp(params.count ?? 8, 3, 12);
+
+  const system =
+    `You are a ${cat.analyst}. Surface specific, underserved, on-trend product opportunities a ${cat.maker} could launch now — favor concrete niches over broad categories. ` +
+    'Respond with a single strict JSON object only — no prose, no markdown. ' +
+    `Schema: {"opportunities": array of exactly ${count} objects {` +
+    '"title": string (the specific product/niche, max 70 chars), ' +
+    '"keyword": string (a concise searchable niche keyword, max 40 chars), ' +
+    '"angle": string (max 140 chars: why this is an opportunity right now), ' +
+    '"audience": string (max 80 chars, the specific buyer), ' +
+    '"demand": "low"|"medium"|"high", ' +
+    '"competition": "low"|"medium"|"high" (market saturation), ' +
+    '"suggestedPrice": number (USD retail)}}.';
+
+  const focus = params.seed
+    ? `Focus on opportunities related to "${params.seed}". `
+    : '';
+  const userPrompt = `${focus}Propose ${count} distinct ${cat.product} opportunities for an ${cat.maker}. Prefer specific, currently-trending, lower-competition niches with real buyer demand. Respond with JSON only.`;
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: MODEL,
+      max_tokens: 1600,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: userPrompt },
+      ],
+    });
+    const text = completion.choices[0]?.message?.content ?? '';
+    const parsed = extractJson<{ opportunities?: unknown[] }>(text);
+    const list = Array.isArray(parsed.opportunities)
+      ? parsed.opportunities
+      : [];
+    const norm = (v: unknown): 'low' | 'medium' | 'high' =>
+      v === 'low' || v === 'high' ? v : 'medium';
+    return list.slice(0, count).map((o) => {
+      const it = (o ?? {}) as Partial<RawOpportunity>;
+      const title = String(it.title ?? 'Untitled opportunity').slice(0, 90);
+      return {
+        title,
+        keyword: String(it.keyword || title).slice(0, 60),
+        angle: String(it.angle ?? '').slice(0, 200),
+        audience: String(it.audience ?? cat.audience).slice(0, 120),
+        demand: norm(it.demand),
+        competition: norm(it.competition),
+        suggestedPrice: clamp(Number(it.suggestedPrice), 1, 100000),
+      };
+    });
+  } catch (error) {
+    console.error('[openai] generateOpportunityIdeas failed:', error);
+    throw error instanceof Error ? error : new Error('OpenAI request failed.');
+  }
+}

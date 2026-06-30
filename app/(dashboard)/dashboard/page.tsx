@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, TrendingUp } from 'lucide-react';
+import { Sparkles, TrendingUp, Telescope, ArrowRight } from 'lucide-react';
 
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
@@ -66,6 +66,28 @@ export default async function DashboardPage() {
           Welcome back, {user.name ?? 'designer'}.
         </p>
       </div>
+
+      {/* Opportunity Finder — the proactive "what to make next" engine */}
+      <Link
+        href="/opportunities"
+        className="group flex items-center justify-between gap-4 rounded-xl border bg-gradient-to-r from-primary/10 to-transparent p-5 transition-colors hover:from-primary/20"
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Telescope className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold">Find your next product</p>
+            <p className="text-sm text-muted-foreground">
+              See the highest-opportunity niches in your category, ranked by
+              demand, competition and margin.
+            </p>
+          </div>
+        </div>
+        <span className="hidden shrink-0 items-center gap-1 text-sm font-medium text-primary group-hover:underline sm:flex">
+          Open <ArrowRight className="h-4 w-4" />
+        </span>
+      </Link>
 
       {/* What to design next */}
       <div className="space-y-4">

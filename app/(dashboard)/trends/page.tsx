@@ -24,8 +24,8 @@ export default async function TrendsPage({
       <div>
         <h1 className="text-2xl font-bold">Trend Radar</h1>
         <p className="text-muted-foreground">
-          Search any fashion niche for a live, data-grounded trend report — then
-          turn the winners into a design.
+          Search any niche for a live, data-grounded trend report — then turn
+          the winners into a design.
         </p>
       </div>
 
