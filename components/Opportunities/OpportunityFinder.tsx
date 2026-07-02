@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Telescope, Search, ArrowRight } from 'lucide-react';
+import {
+  Loader2,
+  Telescope,
+  Search,
+  ArrowRight,
+  Bookmark,
+  Check,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +46,8 @@ export function OpportunityFinder({
   const [items, setItems] = useState<Opportunity[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [seed, setSeed] = useState('');
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
 
   const scan = useCallback(async (seedValue?: string) => {
     setLoading(true);
@@ -69,6 +78,32 @@ export function OpportunityFinder({
 
   function analyze(keyword: string) {
     router.push(`/trends?q=${encodeURIComponent(keyword)}`);
+  }
+
+  async function saveIdea(o: Opportunity) {
+    setSavingKey(o.keyword);
+    try {
+      const res = await fetch('/api/ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword: o.keyword,
+          title: o.title,
+          description: `${o.angle} Buyer: ${o.audience}`.slice(0, 400),
+          suggestedPrice: o.suggestedPrice,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json();
+        throw new Error(j.error ?? 'Could not save');
+      }
+      setSavedKeys((prev) => new Set(prev).add(o.keyword));
+      toast.success('Saved to your Library — generate a brief or mockup there.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setSavingKey(null);
+    }
   }
 
   return (
@@ -188,15 +223,31 @@ export function OpportunityFinder({
                   {o.audience}
                 </p>
 
-                <div className="mt-auto pt-1">
+                <div className="mt-auto flex gap-2 pt-1">
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="w-full"
+                    className="flex-1"
                     onClick={() => analyze(o.keyword)}
                   >
-                    <Search className="h-4 w-4" /> Analyze this niche
+                    <Search className="h-4 w-4" /> Analyze
                     <ArrowRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => saveIdea(o)}
+                    disabled={savingKey === o.keyword || savedKeys.has(o.keyword)}
+                  >
+                    {savingKey === o.keyword ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : savedKeys.has(o.keyword) ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Bookmark className="h-4 w-4" />
+                    )}
+                    {savedKeys.has(o.keyword) ? 'Saved' : 'Save idea'}
                   </Button>
                 </div>
               </CardContent>
