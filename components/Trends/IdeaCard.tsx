@@ -15,7 +15,8 @@ import {
 import { MockupButton } from '@/components/Trends/MockupButton';
 import type { DesignIdea, DesignBrief } from '@/lib/trend-types';
 
-function BriefView({
+/** Compact rendering of a generated design brief (reused by the Library). */
+export function BriefView({
   brief,
   onMockup,
 }: {

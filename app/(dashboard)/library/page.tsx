@@ -2,7 +2,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { parseJson } from '@/lib/json';
 import { LibraryView } from '@/components/Library/LibraryView';
-import type { TrendReport } from '@/lib/trend-types';
+import type { TrendReport, DesignBrief } from '@/lib/trend-types';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Library' };
@@ -56,6 +56,7 @@ export default async function LibraryPage() {
     description: i.description,
     suggestedPrice: i.suggestedPrice,
     imageUrl: i.imageUrl,
+    brief: i.briefJson ? parseJson<DesignBrief | null>(i.briefJson, null) : null,
   }));
 
   return (
